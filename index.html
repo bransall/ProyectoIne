@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Evaluación Financiera</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Theme Manager (debe cargarse primero para evitar flash) -->
+    <script src="theme.js"></script>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-primary shadow-sm">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">💰 Evaluación Financiera</span>
+            <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-light btn-sm" onclick="mostrarPanelHistorial()" title="Historial de cálculos">
+                    📜 Historial
+                </button>
+                <span class="text-white-50 small">Comparar Alternativas de Inversión</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container mt-5 mb-5">
+        
+        <!-- Título Principal -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="text-center text-primary fw-bold">Análisis Comparativo de Inversiones</h2>
+                <p class="text-center text-muted">Utiliza VPN, CAE y TIR para tomar la mejor decisión financiera</p>
+            </div>
+        </div>
+
+        <!-- Formulario de Entrada -->
+        <div class="row mb-5">
+            <!-- Alternativa A -->
+            <div class="col-md-6 mb-4">
+                <div class="card border-primary shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">📊 Alternativa A</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="inversionA" class="form-label fw-bold">Inversión Inicial ($)</label>
+                            <input type="number" class="form-control" id="inversionA" placeholder="0.00" step="0.01">
+                            <small class="text-muted">Monto inicial invertido</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tasaDescuentoA" class="form-label fw-bold">Tasa de Descuento (%)</label>
+                            <input type="number" class="form-control" id="tasaDescuentoA" placeholder="0.00" step="0.01">
+                            <small class="text-muted">Ej: 12% para 12</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="vidaUtilA" class="form-label fw-bold">Vida Útil (años)</label>
+                            <input type="number" class="form-control" id="vidaUtilA" placeholder="0" step="1">
+                            <small class="text-muted">Duración del proyecto</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="flujoEfectivoA" class="form-label fw-bold">Flujo de Efectivo Anual ($)</label>
+                            <input type="number" class="form-control" id="flujoEfectivoA" placeholder="0.00" step="0.01">
+                            <small class="text-muted">Ingreso anual promedio</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="valorSalvamentoA" class="form-label fw-bold">Valor de Salvamento ($)</label>
+                            <input type="number" class="form-control" id="valorSalvamentoA" placeholder="0.00" step="0.01">
+                            <small class="text-muted">Valor residual al final</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alternativa B -->
+            <div class="col-md-6 mb-4">
+                <div class="card border-success shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">📊 Alternativa B</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="inversionB" class="form-label fw-bold">Inversión Inicial ($)</label>
+                            <input type="number" class="form-control" id="inversionB" placeholder="0.00" step="0.01">
+                            <small class="text-muted">Monto inicial invertido</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tasaDescuentoB" class="form-label fw-bold">Tasa de Descuento (%)</label>
+                            <input type="number" class="form-control" id="tasaDescuentoB" placeholder="0.00" step="0.01">
+                            <small class="text-muted">Ej: 12% para 12</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="vidaUtilB" class="form-label fw-bold">Vida Útil (años)</label>
+                            <input type="number" class="form-control" id="vidaUtilB" placeholder="0" step="1">
+                            <small class="text-muted">Duración del proyecto</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="flujoEfectivoB" class="form-label fw-bold">Flujo de Efectivo Anual ($)</label>
+                            <input type="number" class="form-control" id="flujoEfectivoB" placeholder="0.00" step="0.01">
+                            <small class="text-muted">Ingreso anual promedio</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="valorSalvamentoB" class="form-label fw-bold">Valor de Salvamento ($)</label>
+                            <input type="number" class="form-control" id="valorSalvamentoB" placeholder="0.00" step="0.01">
+                            <small class="text-muted">Valor residual al final</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selector de Métodos de Evaluación -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-info shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">⚙️ Seleccionar Métodos de Evaluación</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="metodoVPN" value="vpn" checked>
+                                    <label class="form-check-label" for="metodoVPN">
+                                        <strong>VPN</strong> - Valor Presente Neto (Mayor es mejor)
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="metodoCAE" value="cae" checked>
+                                    <label class="form-check-label" for="metodoCAE">
+                                        <strong>CAE</strong> - Costo Anual Equivalente (Menor es mejor)
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="metodoTIR" value="tir" checked>
+                                    <label class="form-check-label" for="metodoTIR">
+                                        <strong>TIR</strong> - Tasa Interna de Retorno (Mayor es mejor)
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-light" role="alert">
+                                    <small class="text-muted">
+                                        <strong>💡 Sugerencia:</strong><br>
+                                        • Selecciona todos los métodos para un análisis completo (default)<br>
+                                        • Selecciona métodos específicos para enfoque particular<br>
+                                        • Al menos un método debe estar seleccionado
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end mt-3">
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="seleccionarTodos()">
+                                Seleccionar Todos
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="deseleccionarTodos()">
+                                Deseleccionar Todos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <button id="btnCalcular" class="btn btn-primary btn-lg" onclick="calcularResultados()">
+                        <i class="bi">📈</i> Calcular
+                    </button>
+                    <button id="btnLimpiar" class="btn btn-warning btn-lg" onclick="limpiarFormulario()">
+                        <i class="bi">🗑️</i> Limpiar
+                    </button>
+                    <button id="btnPDF" class="btn btn-danger btn-lg" onclick="generarPDF()" disabled>
+                        <i class="bi">📄</i> Generar PDF
+                    </button>
+                    <button id="btnExcel" class="btn btn-success btn-lg" onclick="generarExcel()" disabled>
+                        <i class="bi">📥</i> Descargar Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Historial -->
+        <div id="panelHistorial" class="row mb-5" style="display: none;">
+            <div class="col-12">
+                <div class="card border-info shadow-sm">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📜 Historial de Cálculos</h5>
+                        <button type="button" class="btn-close btn-close-white" onclick="mostrarPanelHistorial()" aria-label="Close"></button>
+                    </div>
+                    <div class="card-body">
+                        <div id="listaHistorial">
+                            <p class="text-muted text-center py-3">Cargando historial...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerta de Error -->
+        <div id="alertaError" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none;">
+            <strong>Error:</strong> <span id="mensajeError"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- Nota Importante -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="alert alert-info" role="alert">
+                    <strong>💡 Nota Importante:</strong> En alternativas con vida útil distinta, el CAE es el método preferido para la comparación.
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Resultados (oculta inicialmente) -->
+        <div id="seccionResultados" style="display: none;">
+            <h3 class="text-center text-primary mb-4 fw-bold">Resultados del Análisis</h3>
+
+            <!-- Tabla de Comparación -->
+            <div class="table-responsive mb-5">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="text-center">Métrica</th>
+                            <th class="text-center">Alternativa A</th>
+                            <th class="text-center">Alternativa B</th>
+                            <th class="text-center">Mejor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="filaVPN">
+                            <td class="fw-bold">VPN (Valor Presente Neto)</td>
+                            <td class="text-end"><span id="vpnA">-</span></td>
+                            <td class="text-end"><span id="vpnB">-</span></td>
+                            <td id="mejorVPN" class="text-center text-success fw-bold">-</td>
+                        </tr>
+                        <tr id="filaCAE">
+                            <td class="fw-bold">CAE (Costo Anual Equivalente)</td>
+                            <td class="text-end"><span id="caeA">-</span></td>
+                            <td class="text-end"><span id="caeB">-</span></td>
+                            <td id="mejorCAE" class="text-center text-success fw-bold">-</td>
+                        </tr>
+                        <tr id="filaTIR">
+                            <td class="fw-bold">TIR (Tasa Interna de Retorno)</td>
+                            <td class="text-end"><span id="tirA">-</span></td>
+                            <td class="text-end"><span id="tirB">-</span></td>
+                            <td id="mejorTIR" class="text-center text-success fw-bold">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Sección de Gráficos -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <h5 class="text-primary fw-bold mb-3">📊 Visualización de Resultados</h5>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <strong>VPN Comparativo</strong>
+                        </div>
+                        <div class="card-body" style="min-height: 300px;">
+                            <canvas id="chartVPN"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-warning text-dark">
+                            <strong>CAE Comparativo</strong>
+                        </div>
+                        <div class="card-body" style="min-height: 300px;">
+                            <canvas id="chartCAE"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-info text-white">
+                            <strong>TIR Comparativo</strong>
+                        </div>
+                        <div class="card-body" style="min-height: 300px;">
+                            <canvas id="chartTIR"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Análisis de Sensibilidad -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <button class="btn btn-warning btn-lg w-100" onclick="mostrarPanelSensibilidad()" title="Analizar cómo cambian los resultados con variaciones de parámetros">
+                        📈 Análisis de Sensibilidad
+                    </button>
+                </div>
+            </div>
+
+            <div id="panelSensibilidad" class="row mb-5" style="display: none;">
+                <div class="col-12">
+                    <div class="card shadow-sm" style="border-top: 4px solid #fd7e14;">
+                        <div class="card-header bg-warning text-dark">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">📈 Análisis de Sensibilidad</h5>
+                                <button class="btn btn-sm btn-close" onclick="document.getElementById('panelSensibilidad').style.display='none'"></button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="selectParametroSensibilidad" class="form-label fw-bold">Parámetro a Analizar:</label>
+                                    <select id="selectParametroSensibilidad" class="form-select" onchange="onCambioParametroSensibilidad()">
+                                        <option value="tasa">Tasa de Descuento (%)</option>
+                                        <option value="flujo">Flujo de Efectivo Anual</option>
+                                        <option value="inversion">Inversión Inicial</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <small class="text-muted">
+                                        <strong>Muestra cómo varía el VPN con cambios en el parámetro seleccionado (±5%)</strong>
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-lg-6">
+                                    <h6 class="text-primary mb-3">Tabla de Sensibilidad</h6>
+                                    <div style="max-height: 350px; overflow-y: auto;">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light sticky-top">
+                                                <tr>
+                                                    <th>Variación</th>
+                                                    <th>VPN Resultante</th>
+                                                    <th>Viabilidad</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="cuerpoTablaSensibilidad">
+                                                <tr><td colspan="3" class="text-center text-muted">Realice un cálculo primero...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-6">
+                                    <h6 class="text-primary mb-3">Gráfico de Sensibilidad</h6>
+                                    <div style="position: relative; height: 350px;">
+                                        <canvas id="chartSensibilidad"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="alert alert-info mb-0">
+                                        <small>
+                                            <strong>💡 Interpretación:</strong> El gráfico muestra cómo cambia el VPN al variar el parámetro seleccionado. 
+                                            Puntos verdes indican viabilidad (VPN ≥ 0), puntos rojos indican no viabilidad. El punto grande es el escenario base (0%).
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Datos de Entrada en Resultados -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h5 class="text-primary fw-bold mb-3">Datos de Entrada Resumidos</h5>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <strong>Alternativa A</strong>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Inversión:</strong></td>
+                                    <td class="text-end"><span id="invA-resumen">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tasa:</strong></td>
+                                    <td class="text-end"><span id="tasaA-resumen">-</span>%</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Vida Útil:</strong></td>
+                                    <td class="text-end"><span id="vidaA-resumen">-</span> años</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Flujo Anual:</strong></td>
+                                    <td class="text-end"><span id="flujoA-resumen">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Salvamento:</strong></td>
+                                    <td class="text-end"><span id="salvA-resumen">-</span></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <strong>Alternativa B</strong>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Inversión:</strong></td>
+                                    <td class="text-end"><span id="invB-resumen">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tasa:</strong></td>
+                                    <td class="text-end"><span id="tasaB-resumen">-</span>%</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Vida Útil:</strong></td>
+                                    <td class="text-end"><span id="vidaB-resumen">-</span> años</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Flujo Anual:</strong></td>
+                                    <td class="text-end"><span id="flujoB-resumen">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Salvamento:</strong></td>
+                                    <td class="text-end"><span id="salvB-resumen">-</span></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recomendación Final -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card border-success">
+                        <div class="card-header bg-success text-white fw-bold">
+                            ✅ Recomendación Final
+                        </div>
+                        <div class="card-body">
+                            <p id="recomendacion" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Análisis Comparativo Avanzado -->
+            <div id="analisisAvanzado" class="row mb-4"></div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <p class="mb-0">Sistema de Evaluación Financiera © 2026 | Desarrollado para Análisis de Inversiones</p>
+    </footer>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- jsPDF CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- jsPDF AutoTable CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    
+    <!-- SheetJS CDN para exportación a Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@latest/dist/xlsx.full.min.js"></script>
+    
+    <!-- Custom Scripts -->
+    <script src="finance.js"></script>
+    <script src="report.js"></script>
+    <script src="graphs.js"></script>
+    <script src="history.js"></script>
+    <script src="sensitivity.js"></script>
+    <script src="excel.js"></script>
+    <script src="analysis.js"></script>
+    <script src="uiux.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
