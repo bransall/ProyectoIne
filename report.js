@@ -3,13 +3,34 @@
    ================================ */
 
 /**
+ * Limpia HTML y etiquetas de un texto
+ * @param {string} html - Texto con HTML
+ * @returns {string} Texto limpio sin HTML
+ */
+function limpiarHTML(html) {
+    if (!html) return '';
+    
+    // Crear un elemento temporal para parsear HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    // Obtener solo el texto
+    let texto = temp.textContent || temp.innerText || '';
+    
+    // Limpiar espacios en blanco extras
+    texto = texto.replace(/\s+/g, ' ').trim();
+    
+    return texto;
+}
+
+/**
  * Genera un reporte PDF con los resultados del análisis
  * @param {object} datosA - Datos de entrada de Alternativa A
  * @param {object} datosB - Datos de entrada de Alternativa B
  * @param {object} resultadosA - Resultados de cálculos de Alternativa A
  * @param {object} resultadosB - Resultados de cálculos de Alternativa B
  * @param {object} comparacion - Comparación entre alternativas
- * @param {string} recomendacion - Texto de recomendación
+ * @param {string} recomendacion - Texto de recomendación (puede contener HTML)
  */
 function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion, recomendacion) {
     try {
@@ -70,11 +91,16 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         resumen.push(`Mejor CAE: Alternativa ${comparacion.mejorCAE}`);
         
         resumen.forEach(linea => {
+            // Verificar si necesita nueva página
+            if (yPos > pageHeight - 40) {
+                doc.addPage();
+                yPos = 15;
+            }
             doc.text(linea, margen + 5, yPos);
-            yPos += 6;
+            yPos += 7; // Mayor espaciado
         });
         
-        yPos += 5;
+        yPos += 8;
         
         // ========== DATOS DE ENTRADA ==========
         doc.setFontSize(11);
@@ -87,7 +113,7 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         const datosTabla = [
             ['Concepto', 'Alternativa A', 'Alternativa B'],
             ['Inversión Inicial', formatearMoneda(datosA.inversionInicial), formatearMoneda(datosB.inversionInicial)],
-            ['Tasa de Descuento', formatearPorcentaje(datosA.tasaDescuento), formatearPorcentaje(datosB.tasaDescuento)],
+            ['Tasa de Descuento', formatearNumero(datosA.tasaDescuento) + '%', formatearNumero(datosB.tasaDescuento) + '%'],
             ['Vida Útil (años)', datosA.vidaUtil.toString(), datosB.vidaUtil.toString()],
             ['Flujo de Efectivo Anual', formatearMoneda(datosA.flujoEfectivo), formatearMoneda(datosB.flujoEfectivo)],
             ['Valor de Salvamento', formatearMoneda(datosA.valorSalvamento), formatearMoneda(datosB.valorSalvamento)]
@@ -99,24 +125,27 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
             startY: yPos,
             margin: { left: margen, right: margen },
             columnStyles: {
-                0: { cellWidth: 60, halign: 'left', textColor: colorPrimario, fontStyle: 'bold' },
-                1: { cellWidth: (anchoContenido - 60) / 2, halign: 'right' },
-                2: { cellWidth: (anchoContenido - 60) / 2, halign: 'right' }
+                0: { cellWidth: 50, halign: 'left', textColor: colorPrimario, fontStyle: 'bold' },
+                1: { cellWidth: (anchoContenido - 50) / 2, halign: 'right' },
+                2: { cellWidth: (anchoContenido - 50) / 2, halign: 'right' }
             },
             headStyles: {
                 fillColor: colorPrimario,
                 textColor: [255, 255, 255],
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                lineHeight: 7
             },
             bodyStyles: {
-                textColor: colorTexto
+                textColor: colorTexto,
+                lineHeight: 7
             },
             alternateRowStyles: {
                 fillColor: [245, 247, 250]
-            }
+            },
+            cellPadding: { top: 4, right: 4, bottom: 4, left: 4 }
         });
         
-        yPos = doc.lastAutoTable.finalY + 10;
+        yPos = doc.lastAutoTable.finalY + 12;
         
         // Verificar si necesita nueva página
         if (yPos > pageHeight - 40) {
@@ -147,8 +176,8 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
             ],
             [
                 'TIR',
-                formatearPorcentaje(resultadosA.tir),
-                formatearPorcentaje(resultadosB.tir),
+                formatearNumero(resultadosA.tir) + '%',
+                formatearNumero(resultadosB.tir) + '%',
                 comparacion.mejorTIR
             ]
         ];
@@ -159,25 +188,28 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
             startY: yPos,
             margin: { left: margen, right: margen },
             columnStyles: {
-                0: { cellWidth: 50, halign: 'left', textColor: colorPrimario, fontStyle: 'bold' },
-                1: { cellWidth: (anchoContenido - 50) / 3, halign: 'right' },
-                2: { cellWidth: (anchoContenido - 50) / 3, halign: 'right' },
-                3: { cellWidth: (anchoContenido - 50) / 3, halign: 'center', fontStyle: 'bold' }
+                0: { cellWidth: 40, halign: 'left', textColor: colorPrimario, fontStyle: 'bold' },
+                1: { cellWidth: (anchoContenido - 40) / 3, halign: 'right' },
+                2: { cellWidth: (anchoContenido - 40) / 3, halign: 'right' },
+                3: { cellWidth: (anchoContenido - 40) / 3, halign: 'center', fontStyle: 'bold' }
             },
             headStyles: {
                 fillColor: colorPrimario,
                 textColor: [255, 255, 255],
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                lineHeight: 7
             },
             bodyStyles: {
-                textColor: colorTexto
+                textColor: colorTexto,
+                lineHeight: 7
             },
             alternateRowStyles: {
                 fillColor: [245, 247, 250]
-            }
+            },
+            cellPadding: { top: 4, right: 4, bottom: 4, left: 4 }
         });
         
-        yPos = doc.lastAutoTable.finalY + 10;
+        yPos = doc.lastAutoTable.finalY + 12;
         
         // Verificar si necesita nueva página
         if (yPos > pageHeight - 60) {
@@ -186,11 +218,17 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         }
         
         // ========== INTERPRETACIÓN ==========
+        // Verificar si necesita nueva página
+        if (yPos > pageHeight - 50) {
+            doc.addPage();
+            yPos = 15;
+        }
+        
         doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
         doc.text('INTERPRETACIÓN DE RESULTADOS', margen, yPos);
         
-        yPos += 8;
+        yPos += 10;
         
         doc.setFontSize(9);
         doc.setFont(undefined, 'normal');
@@ -203,29 +241,45 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         interpretacion.forEach(linea => {
             const lineasEnvueltas = doc.splitTextToSize(linea, anchoContenido - 10);
             lineasEnvueltas.forEach(sublinea => {
+                // Verificar si necesita nueva página antes de escribir
+                if (yPos > pageHeight - 40) {
+                    doc.addPage();
+                    yPos = 15;
+                }
                 doc.text(sublinea, margen + 5, yPos);
-                yPos += 5;
+                yPos += 6;
             });
-            yPos += 2;
+            yPos += 4; // Mayor espaciado entre párrafos
         });
         
-        yPos += 5;
+        yPos += 8;
         
         // Nota sobre vidas útiles diferentes
         if (comparacion.vidasDiferentes) {
-            doc.setFillColor(212, 237, 218);
-            doc.rect(margen, yPos - 3, anchoContenido, 20, 'F');
+            // Verificar si necesita nueva página
+            if (yPos > pageHeight - 50) {
+                doc.addPage();
+                yPos = 15;
+            }
             
-            doc.setTextColor(21, 87, 36);
-            doc.setFont(undefined, 'bold');
-            doc.text('⚠️ NOTA IMPORTANTE:', margen + 5, yPos);
-            yPos += 6;
-            
-            doc.setFont(undefined, 'normal');
+            const notaTextSize = 9;
             const notaLineas = doc.splitTextToSize(
                 'Las alternativas tienen vidas útiles diferentes. El CAE es el criterio preferido para comparación.',
                 anchoContenido - 10
             );
+            const notaAltura = 3 + (notaLineas.length * 5) + 4; // Alto dinámico
+            
+            doc.setFillColor(212, 237, 218);
+            doc.rect(margen, yPos - 3, anchoContenido, notaAltura + 2, 'F');
+            
+            doc.setTextColor(21, 87, 36);
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(10);
+            doc.text('⚠️ NOTA IMPORTANTE:', margen + 5, yPos + 2);
+            yPos += 7;
+            
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(notaTextSize);
             notaLineas.forEach(linea => {
                 doc.text(linea, margen + 5, yPos);
                 yPos += 5;
@@ -242,27 +296,41 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         }
         
         // ========== RECOMENDACIÓN FINAL ==========
+        // Verificar si necesita nueva página
+        if (yPos > pageHeight - 60) {
+            doc.addPage();
+            yPos = 15;
+        }
+        
         doc.setFillColor(...colorExito);
-        doc.rect(margen - 1, yPos - 3, anchoContenido + 2, 8, 'F');
+        doc.rect(margen - 1, yPos - 2, anchoContenido + 2, 8, 'F');
         
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
         doc.text('RECOMENDACIÓN FINAL', margen + 5, yPos + 2);
         
-        yPos += 12;
+        yPos += 15; // Mayor espaciado después del título
         
         doc.setTextColor(...colorTexto);
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setFont(undefined, 'normal');
+        doc.setLineHeightFactor(1.6); // Aumentar más la altura de línea
         
-        const recomLineas = doc.splitTextToSize(recomendacion, anchoContenido - 10);
-        recomLineas.forEach(linea => {
+        // Limpiar HTML de la recomendación
+        const recomendacionLimpia = limpiarHTML(recomendacion);
+        const recomLineas = doc.splitTextToSize(recomendacionLimpia, anchoContenido - 10);
+        recomLineas.forEach((linea, index) => {
+            // Verificar si necesita nueva página - margen más generoso
+            if (yPos > pageHeight - 35) {
+                doc.addPage();
+                yPos = 15;
+            }
             doc.text(linea, margen + 5, yPos);
-            yPos += 6;
+            yPos += 8; // Mayor espaciado entre líneas
         });
         
-        yPos += 10;
+        yPos += 10; // Mayor espaciado final
         
         // ========== NOTAS METODOLÓGICAS ==========
         doc.setTextColor(...colorGris);
