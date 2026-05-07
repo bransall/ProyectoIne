@@ -212,12 +212,6 @@
             </div>
         </div>
 
-        <!-- Alerta de Error -->
-        <div id="alertaError" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none;">
-            <strong>Error:</strong> <span id="mensajeError"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-
         <!-- Nota Importante -->
         <div class="row mb-5">
             <div class="col-12">
@@ -341,7 +335,7 @@
                                 <div class="col-lg-6">
                                     <h6 class="text-primary mb-3">Tabla de Sensibilidad</h6>
                                     <div style="max-height: 350px; overflow-y: auto;">
-                                        <table class="table table-sm table-bordered">
+                                        <table id="tablaSensibilidad" class="table table-sm table-bordered">
                                             <thead class="table-light sticky-top">
                                                 <tr>
                                                     <th>Variación</th>
@@ -499,5 +493,25 @@
     <script src="analysis.js"></script>
     <script src="uiux.js"></script>
     <script src="main.js"></script>
+
+    <!-- Modal Elegante de Error (Flotante) -->
+    <div id="modalError" class="error-modal" style="display: none;">
+        <div class="error-modal-content">
+            <div class="error-modal-header">
+                <div class="error-modal-icon">⚠️</div>
+                <h5 class="error-modal-title">Validación</h5>
+                <button type="button" class="error-modal-close" onclick="cerrarModalError()" aria-label="Cerrar">×</button>
+            </div>
+            <div class="error-modal-body">
+                <p id="mensajeErrorModal"></p>
+            </div>
+            <div class="error-modal-footer">
+                <button type="button" class="error-modal-btn" onclick="cerrarModalError()">Entendido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay del Modal -->
+    <div id="overlayError" class="error-overlay" onclick="cerrarModalError()" style="display: none;"></div>
 </body>
 </html>

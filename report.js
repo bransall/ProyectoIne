@@ -10,15 +10,10 @@
 function limpiarHTML(html) {
     if (!html) return '';
     
-    // Crear un elemento temporal para parsear HTML
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
-    
-    // Obtener solo el texto
-    let texto = temp.textContent || temp.innerText || '';
-    
-    // Limpiar espacios en blanco extras
-    texto = texto.replace(/\s+/g, ' ').trim();
+    // Dado que finance.js ya no contiene HTML, 
+    // solo necesitamos hacer trim y limpiar espacios dobles
+    let texto = html.trim();
+    texto = texto.replace(/  +/g, ' ');
     
     return texto;
 }
@@ -31,8 +26,9 @@ function limpiarHTML(html) {
  * @param {object} resultadosB - Resultados de cálculos de Alternativa B
  * @param {object} comparacion - Comparación entre alternativas
  * @param {string} recomendacion - Texto de recomendación (puede contener HTML)
+ * @param {object} metodosSeleccionados - Objeto con vpn, cae, tir booleanos indicando qué métodos mostrar
  */
-function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion, recomendacion) {
+function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion, recomendacion, metodosSeleccionados) {
     try {
         // Desestructurar jsPDF
         const { jsPDF } = window.jspdf;
@@ -86,9 +82,15 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         doc.setFont(undefined, 'normal');
         
         const resumen = [];
-        resumen.push(`Mejor VPN: Alternativa ${comparacion.mejorVPN}`);
-        resumen.push(`Mejor TIR: Alternativa ${comparacion.mejorTIR}`);
-        resumen.push(`Mejor CAE: Alternativa ${comparacion.mejorCAE}`);
+        if (metodosSeleccionados.vpn) {
+            resumen.push(`Mejor VPN: Alternativa ${comparacion.mejorVPN}`);
+        }
+        if (metodosSeleccionados.tir) {
+            resumen.push(`Mejor TIR: Alternativa ${comparacion.mejorTIR}`);
+        }
+        if (metodosSeleccionados.cae) {
+            resumen.push(`Mejor CAE: Alternativa ${comparacion.mejorCAE}`);
+        }
         
         resumen.forEach(linea => {
             // Verificar si necesita nueva página
@@ -103,7 +105,7 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         yPos += 8;
         
         // ========== DATOS DE ENTRADA ==========
-        doc.setFontSize(11);
+        doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.text('DATOS DE ENTRADA', margen, yPos);
         
@@ -154,33 +156,43 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         }
         
         // ========== RESULTADOS DE CÁLCULOS ==========
-        doc.setFontSize(11);
+        doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.text('RESULTADOS DE CÁLCULOS', margen, yPos);
         
         yPos += 8;
         
         const resultadosTabla = [
-            ['Métrica', 'Alternativa A', 'Alternativa B', 'Mejor'],
-            [
+            ['Métrica', 'Alternativa A', 'Alternativa B', 'Mejor']
+        ];
+        
+        // Agregar solo las filas de métodos seleccionados
+        if (metodosSeleccionados.vpn) {
+            resultadosTabla.push([
                 'VPN',
                 formatearMoneda(resultadosA.vpn),
                 formatearMoneda(resultadosB.vpn),
                 comparacion.mejorVPN
-            ],
-            [
+            ]);
+        }
+        
+        if (metodosSeleccionados.cae) {
+            resultadosTabla.push([
                 'CAE',
                 formatearMoneda(resultadosA.cae),
                 formatearMoneda(resultadosB.cae),
                 comparacion.mejorCAE
-            ],
-            [
+            ]);
+        }
+        
+        if (metodosSeleccionados.tir) {
+            resultadosTabla.push([
                 'TIR',
                 formatearNumero(resultadosA.tir) + '%',
                 formatearNumero(resultadosB.tir) + '%',
                 comparacion.mejorTIR
-            ]
-        ];
+            ]);
+        }
         
         doc.autoTable({
             head: [resultadosTabla[0]],
@@ -224,32 +236,48 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
             yPos = 15;
         }
         
-        doc.setFontSize(11);
+        doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.text('INTERPRETACIÓN DE RESULTADOS', margen, yPos);
         
         yPos += 10;
         
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
         
         const interpretacion = [];
-        interpretacion.push('VPN (Valor Presente Neto): Indica el valor actual neto del proyecto. Mayor es mejor.');
-        interpretacion.push('CAE (Costo Anual Equivalente): Convierte el VPN en anualidad. Menor es mejor.');
-        interpretacion.push('TIR (Tasa Interna de Retorno): Rendimiento porcentual del proyecto. Mayor es mejor.');
+        if (metodosSeleccionados.vpn) {
+            interpretacion.push('VPN (Valor Presente Neto): Indica el valor actual neto del proyecto. Mayor es mejor.');
+        }
+        if (metodosSeleccionados.cae) {
+            interpretacion.push('CAE (Costo Anual Equivalente): Convierte el VPN en anualidad. Menor es mejor.');
+        }
+        if (metodosSeleccionados.tir) {
+            interpretacion.push('TIR (Tasa Interna de Retorno): Rendimiento porcentual del proyecto. Mayor es mejor.');
+        }
+        
+        // Usar ancho fijo consistente (170 puntos)
+        const margenInterpretacion = margen + 3;
+        const anchoInterpretacionFijo = 170;
         
         interpretacion.forEach(linea => {
-            const lineasEnvueltas = doc.splitTextToSize(linea, anchoContenido - 10);
+            // Verificar si necesita nueva página
+            if (yPos > pageHeight - 40) {
+                doc.addPage();
+                yPos = 15;
+            }
+            
+            // Dividir en líneas
+            const lineasEnvueltas = doc.splitTextToSize(linea, anchoInterpretacionFijo);
             lineasEnvueltas.forEach(sublinea => {
-                // Verificar si necesita nueva página antes de escribir
-                if (yPos > pageHeight - 40) {
+                if (yPos > pageHeight - 10) {
                     doc.addPage();
                     yPos = 15;
                 }
-                doc.text(sublinea, margen + 5, yPos);
+                doc.text(sublinea, margenInterpretacion, yPos);
                 yPos += 6;
             });
-            yPos += 4; // Mayor espaciado entre párrafos
+            yPos += 3; // Espaciado entre items
         });
         
         yPos += 8;
@@ -262,26 +290,28 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
                 yPos = 15;
             }
             
-            const notaTextSize = 9;
+            // Usar ancho fijo consistente (170 puntos)
+            const margenNota = margen + 3;
+            const anchoNotaFijo = 170;
             const notaLineas = doc.splitTextToSize(
                 'Las alternativas tienen vidas útiles diferentes. El CAE es el criterio preferido para comparación.',
-                anchoContenido - 10
+                anchoNotaFijo
             );
-            const notaAltura = 3 + (notaLineas.length * 5) + 4; // Alto dinámico
+            const notaAltura = 5 + (notaLineas.length * 5) + 3;
             
             doc.setFillColor(212, 237, 218);
-            doc.rect(margen, yPos - 3, anchoContenido, notaAltura + 2, 'F');
+            doc.rect(margenNota - 2, yPos - 4, anchoNotaFijo + 4, notaAltura, 'F');
             
             doc.setTextColor(21, 87, 36);
             doc.setFont(undefined, 'bold');
             doc.setFontSize(10);
-            doc.text('⚠️ NOTA IMPORTANTE:', margen + 5, yPos + 2);
-            yPos += 7;
+            doc.text('⚠️ NOTA IMPORTANTE:', margenNota, yPos + 1);
+            yPos += 6;
             
             doc.setFont(undefined, 'normal');
-            doc.setFontSize(notaTextSize);
+            doc.setFontSize(10);
             notaLineas.forEach(linea => {
-                doc.text(linea, margen + 5, yPos);
+                doc.text(linea, margenNota, yPos);
                 yPos += 5;
             });
             yPos += 3;
@@ -297,45 +327,75 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         
         // ========== RECOMENDACIÓN FINAL ==========
         // Verificar si necesita nueva página
-        if (yPos > pageHeight - 60) {
+        if (yPos > pageHeight - 80) {
             doc.addPage();
             yPos = 15;
         }
         
+        // Recuadro de recomendación
         doc.setFillColor(...colorExito);
-        doc.rect(margen - 1, yPos - 2, anchoContenido + 2, 8, 'F');
+        doc.rect(margen, yPos - 2, anchoContenido, 10, 'F');
         
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(11);
+        doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
-        doc.text('RECOMENDACIÓN FINAL', margen + 5, yPos + 2);
+        doc.text('✓ RECOMENDACIÓN FINAL', margen + 5, yPos + 3);
         
-        yPos += 15; // Mayor espaciado después del título
+        yPos += 18; // Espaciado después del título
         
         doc.setTextColor(...colorTexto);
-        doc.setFontSize(9);
+        doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
-        doc.setLineHeightFactor(1.6); // Aumentar más la altura de línea
         
         // Limpiar HTML de la recomendación
         const recomendacionLimpia = limpiarHTML(recomendacion);
-        const recomLineas = doc.splitTextToSize(recomendacionLimpia, anchoContenido - 10);
-        recomLineas.forEach((linea, index) => {
-            // Verificar si necesita nueva página - margen más generoso
-            if (yPos > pageHeight - 35) {
+        
+        // Usar ancho fijo optimizado para jsPDF (170 es más generoso)
+        const margenRecomendacion = margen + 3;
+        const anchoRecomendacionFijo = 170; // Ancho aumentado para mejor wrapping
+        
+        // Dividir en párrafos por saltos de línea
+        const parrafos = recomendacionLimpia.split(/\n/).filter(p => p.trim());
+        
+        parrafos.forEach((parrafo) => {
+            if (!parrafo.trim()) return;
+            
+            // Verificar si necesita nueva página ANTES de escribir
+            if (yPos > pageHeight - 50) {
                 doc.addPage();
                 yPos = 15;
             }
-            doc.text(linea, margen + 5, yPos);
-            yPos += 8; // Mayor espaciado entre líneas
+            
+            // Dividir párrafo en líneas con ancho fijo
+            const lineas = doc.splitTextToSize(parrafo.trim(), anchoRecomendacionFijo);
+            
+            // Escribir cada línea
+            lineas.forEach((linea) => {
+                if (yPos > pageHeight - 10) {
+                    doc.addPage();
+                    yPos = 15;
+                }
+                doc.text(linea, margenRecomendacion, yPos);
+                yPos += 6;
+            });
+            
+            yPos += 3; // Espaciado entre párrafos
         });
         
-        yPos += 10; // Mayor espaciado final
+        yPos += 5; // Espaciado final
         
         // ========== NOTAS METODOLÓGICAS ==========
+        // Posicionar en la parte inferior de la página
+        yPos = pageHeight - 18;
+        
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.5);
+        doc.line(margen, yPos - 2, pageWidth - margen, yPos - 2);
+        
+        yPos += 2;
         doc.setTextColor(...colorGris);
         doc.setFontSize(8);
-        doc.setFont(undefined, 'italic');
+        doc.setFont(undefined, 'normal');
         
         const notasMetodologicas = [
             'Este reporte fue generado automáticamente por el Sistema de Evaluación Financiera.',
@@ -344,7 +404,10 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         ];
         
         notasMetodologicas.forEach((nota, index) => {
-            doc.text(nota, margen, pageHeight - 15 + (index * 4));
+            if (yPos < pageHeight - 2) {
+                doc.text(nota, margen + 5, yPos);
+                yPos += 3;
+            }
         });
         
         // ========== GUARDAR PDF ==========

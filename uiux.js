@@ -179,40 +179,22 @@ function validarFormularioCompleto() {
 }
 
 /**
- * Muestra errores de validación de forma mejorada
+ * Muestra errores de validación en el modal elegante
  */
 function mostrarErroresValidacion(resultadoValidacion) {
-    // Limpiar errores previos
-    const alertaPrevio = document.getElementById('alertaValidacion');
-    if (alertaPrevio) alertaPrevio.remove();
-    
     if (resultadoValidacion.errores.length === 0) {
         return;
     }
     
-    // Crear alerta con errores
-    const alerta = document.createElement('div');
-    alerta.id = 'alertaValidacion';
-    alerta.className = 'alert alert-danger alert-validacion';
-    alerta.setAttribute('role', 'alert');
+    // Formatear los errores para mostrar
+    const listaErrores = resultadoValidacion.errores
+        .map(error => `• ${error}`)
+        .join('\n');
     
-    const erroresHTML = resultadoValidacion.errores
-        .map(error => `<li>${error}</li>`)
-        .join('');
+    const mensajeCompleto = `Errores de Validación:\n\n${listaErrores}`;
     
-    alerta.innerHTML = `
-        <strong>⚠️ Errores de Validación:</strong>
-        <ul class="mb-0 mt-2">
-            ${erroresHTML}
-        </ul>
-    `;
-    
-    // Insertar antes del botón Calcular
-    const botonesDiv = document.querySelector('[class*="btn"]').parentElement;
-    botonesDiv.insertBefore(alerta, botonesDiv.firstChild);
-    
-    // Animar entrada
-    alerta.style.animation = 'slideIn 0.3s ease';
+    // Usar el modal elegante
+    mostrarError(mensajeCompleto);
 }
 
 /**

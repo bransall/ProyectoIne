@@ -74,27 +74,43 @@ function obtenerDatos(alternativa) {
 }
 
 /**
- * Muestra un mensaje de error en la alerta
+ * Muestra un mensaje de error en un modal elegante
  * @param {string} mensaje - Mensaje a mostrar
  */
 function mostrarError(mensaje) {
-    const alerta = document.getElementById('alertaError');
-    const mensajeParagrafo = document.getElementById('mensajeError');
+    const modal = document.getElementById('modalError');
+    const overlay = document.getElementById('overlayError');
+    const mensajeParagrafo = document.getElementById('mensajeErrorModal');
     
     mensajeParagrafo.textContent = mensaje;
-    alerta.style.display = 'block';
-    
-    // Auto-cerrar después de 6 segundos
-    setTimeout(() => {
-        alerta.style.display = 'none';
-    }, 6000);
+    modal.classList.add('show');
+    overlay.classList.add('show');
+    modal.style.display = 'block';
+    overlay.style.display = 'block';
 }
 
 /**
- * Oculta la alerta de error
+ * Oculta el modal de error
+ */
+function cerrarModalError() {
+    const modal = document.getElementById('modalError');
+    const overlay = document.getElementById('overlayError');
+    
+    modal.classList.remove('show');
+    overlay.classList.remove('show');
+    
+    // Esperar a que termine la animación antes de ocultar
+    setTimeout(() => {
+        modal.style.display = 'none';
+        overlay.style.display = 'none';
+    }, 300);
+}
+
+/**
+ * Oculta la alerta de error (compatibilidad con código anterior)
  */
 function ocultarError() {
-    document.getElementById('alertaError').style.display = 'none';
+    cerrarModalError();
 }
 
 /**
@@ -173,7 +189,9 @@ function calcularResultados() {
             resultadosAlternativaB,
             datosAlternativaA.vidaUtil,
             datosAlternativaB.vidaUtil,
-            metodosSeleccionados
+            metodosSeleccionados,
+            datosAlternativaA.tasaDescuento,
+            datosAlternativaB.tasaDescuento
         );
         
         // Guardar en historial
@@ -330,13 +348,17 @@ function generarPDF() {
             return;
         }
         
+        // Obtener los métodos seleccionados
+        const metodosSeleccionados = obtenerMetodosSeleccionados();
+        
         const resultado = generarReportePDF(
             datosAlternativaA,
             datosAlternativaB,
             resultadosAlternativaA,
             resultadosAlternativaB,
             datosComparacion.comparacion,
-            datosComparacion.recomendacion
+            datosComparacion.recomendacion,
+            metodosSeleccionados
         );
         
         if (!resultado.exito) {

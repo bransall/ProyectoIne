@@ -156,6 +156,11 @@ function calcularTIR(inversionInicial, flujoEfectivo, vidaUtil, valorSalvamento)
     try {
         // Función auxiliar para calcular VPN con una tasa dada
         function vpnConTasa(tasa) {
+            // Evitar valores que causen problemas numéricos
+            if (tasa <= -1) {
+                return Number.POSITIVE_INFINITY;
+            }
+            
             let vpn = -inversionInicial;
             for (let t = 1; t <= vidaUtil; t++) {
                 vpn += flujoEfectivo / Math.pow(1 + tasa, t);
@@ -164,35 +169,52 @@ function calcularTIR(inversionInicial, flujoEfectivo, vidaUtil, valorSalvamento)
             return vpn;
         }
 
-        // Método de bisección
-        let tasaBaja = -0.99;      // -99%
-        let tasaAlta = 10;          // 1000%
-        let tol = 0.000001;         // Tolerancia
-        let maxIter = 1000;         // Máximo de iteraciones
+        // Método de bisección con rango realista de tasas
+        // La TIR típicamente está entre 0% y 100% en proyectos reales
+        let tasaBaja = 0;           // 0%
+        let tasaAlta = 1.0;         // 100%
+        let tol = 0.0001;           // Tolerancia
+        let maxIter = 50;           // Iteraciones
         let iteraciones = 0;
 
-        // Verificar que hay solución
+        // Evaluar los extremos
         let vpnBaja = vpnConTasa(tasaBaja);
         let vpnAlta = vpnConTasa(tasaAlta);
 
-        // Si ambos tienen el mismo signo, puede no haber solución o estar fuera del rango
+        // Si ambos tienen el mismo signo, no hay solución en este rango
         if ((vpnBaja > 0 && vpnAlta > 0) || (vpnBaja < 0 && vpnAlta < 0)) {
-            // Ampliar el rango de búsqueda
-            tasaBaja = -0.999;
-            tasaAlta = 100;
+            // Ampliar el rango de búsqueda más allá de 100%
+            tasaBaja = -0.5;        // -50%
+            tasaAlta = 3.0;         // 300%
             vpnBaja = vpnConTasa(tasaBaja);
             vpnAlta = vpnConTasa(tasaAlta);
+            
+            // Si aún no hay cambio de signo, retornar null indicando que no hay TIR real
+            if ((vpnBaja > 0 && vpnAlta > 0) || (vpnBaja < 0 && vpnAlta < 0)) {
+                // Estimar una TIR aproximada usando método simple
+                let paybackSimple = inversionInicial / flujoEfectivo;
+                if (paybackSimple <= vidaUtil) {
+                    // Proyecto con retorno simple, estimar TIR
+                    let estimado = (flujoEfectivo / inversionInicial) - (1 / vidaUtil);
+                    return Math.max(0, Math.min(100, estimado * 100));
+                }
+                return 0; // Si no es viable, retornar 0%
+            }
         }
 
-        // Bisección
+        // Bisección estándar
         while ((tasaAlta - tasaBaja) > tol && iteraciones < maxIter) {
             let tasaMedia = (tasaBaja + tasaAlta) / 2;
             let vpnMedia = vpnConTasa(tasaMedia);
 
-            if (Math.abs(vpnMedia) < tol) {
-                return tasaMedia * 100; // Retornar en porcentaje
+            // Si encontramos una raíz exacta
+            if (Math.abs(vpnMedia) < 0.01) {
+                let tir = tasaMedia * 100;
+                // Asegurar que esté en rango realista
+                return Math.max(0, Math.min(100, tir));
             }
 
+            // Decidir hacia dónde continuar
             if ((vpnBaja > 0 && vpnMedia < 0) || (vpnBaja < 0 && vpnMedia > 0)) {
                 tasaAlta = tasaMedia;
                 vpnAlta = vpnMedia;
@@ -205,7 +227,13 @@ function calcularTIR(inversionInicial, flujoEfectivo, vidaUtil, valorSalvamento)
         }
 
         let tir = (tasaBaja + tasaAlta) / 2;
-        return tir * 100; // Retornar en porcentaje
+        tir = tir * 100;
+        
+        // Limitar a rango realista pero permitir valores fuera si son matemáticamente válidos
+        if (tir < 0) return 0;
+        if (tir > 300) return null; // Indicar que no hay TIR realista
+        
+        return tir;
     } catch (error) {
         console.error("Error en calcularTIR:", error);
         throw error;
@@ -265,10 +293,10 @@ function analizarVPN(vpnA, vpnB) {
     const mejor = vpnA > vpnB ? 'A' : 'B';
     const peor = mejor === 'A' ? 'B' : 'A';
     
-    let analisis = `<strong>VPN - Valor Presente Neto</strong>: Mide el valor actual de los flujos netos. `;
-    analisis += `La Alternativa ${mejor} tiene un VPN superior (${formatearMoneda(Math.max(vpnA, vpnB))}) comparado con ${formatearMoneda(Math.min(vpnA, vpnB))}, `;
-    analisis += `una diferencia de ${formatearMoneda(diferenciaVPN)} (${porcentajeDif.toFixed(1)}%). `;
-    analisis += `Esto significa que la Alternativa ${mejor} generará más valor económico después de recuperar la inversión inicial.`;
+    let analisis = `VPN - Valor Presente Neto: Mide el valor actual de los flujos netos.`;
+    analisis += `\nLa Alternativa ${mejor} tiene un VPN superior (${formatearMoneda(Math.max(vpnA, vpnB))}) comparado con ${formatearMoneda(Math.min(vpnA, vpnB))}.`;
+    analisis += `\nDiferencia: ${formatearMoneda(diferenciaVPN)} (${porcentajeDif.toFixed(1)}%).`;
+    analisis += `\nSignificado: La Alternativa ${mejor} generará más valor económico después de recuperar la inversión inicial.`;
     
     return { mejor, analisis };
 }
@@ -282,10 +310,10 @@ function analizarCAE(caeA, caeB) {
     const mejor = caeA < caeB ? 'A' : 'B';
     const peor = mejor === 'A' ? 'B' : 'A';
     
-    let analisis = `<strong>CAE - Costo Anual Equivalente</strong>: Convierte el costo presente en un costo anual uniforme. `;
-    analisis += `La Alternativa ${mejor} tiene un CAE más bajo (${formatearMoneda(Math.min(caeA, caeB))}) frente a ${formatearMoneda(Math.max(caeA, caeB))}, `;
-    analisis += `una diferencia de ${formatearMoneda(diferenciaCae)} anuales (${porcentajeDif.toFixed(1)}%). `;
-    analisis += `En proyectos con vidas útiles diferentes, esto es el criterio más importante pues normaliza los costos a un período común.`;
+    let analisis = `CAE - Costo Anual Equivalente: Convierte el costo presente en un costo anual uniforme.`;
+    analisis += `\nLa Alternativa ${mejor} tiene un CAE más bajo (${formatearMoneda(Math.min(caeA, caeB))}) frente a ${formatearMoneda(Math.max(caeA, caeB))}.`;
+    analisis += `\nDiferencia: ${formatearMoneda(diferenciaCae)} anuales (${porcentajeDif.toFixed(1)}%).`;
+    analisis += `\nImportancia: En proyectos con vidas útiles diferentes, este criterio normaliza los costos a un período común.`;
     
     return { mejor, analisis };
 }
@@ -293,15 +321,32 @@ function analizarCAE(caeA, caeB) {
 /**
  * Genera análisis técnico detallado para TIR
  */
-function analizarTIR(tirA, tirB) {
+function analizarTIR(tirA, tirB, tasaDescuentoA = 0, tasaDescuentoB = 0) {
     const diferenciaTir = Math.abs(tirA - tirB);
     const mejor = tirA > tirB ? 'A' : 'B';
     const peor = mejor === 'A' ? 'B' : 'A';
     
-    let analisis = `<strong>TIR - Tasa Interna de Retorno</strong>: Representa la tasa de rendimiento porcentual de la inversión. `;
-    analisis += `La Alternativa ${mejor} genera un retorno de ${tirA.toFixed(2)}% frente al ${tirB.toFixed(2)}% de la Alternativa ${peor}, `;
-    analisis += `una diferencia de ${diferenciaTir.toFixed(2)} puntos porcentuales. `;
-    analisis += `Una TIR mayor indica mejor rentabilidad relativa en el período de inversión.`;
+    let analisis = `TIR - Tasa Interna de Retorno: Representa la tasa de rendimiento porcentual que iguala el VPN a cero.`;
+    analisis += `\nLa Alternativa ${mejor} ofrece TIR del ${tirA.toFixed(2)}% frente al ${tirB.toFixed(2)}% de Alternativa ${peor}, una diferencia de ${diferenciaTir.toFixed(2)} puntos porcentuales.`;
+    
+    // Agregar análisis de viabilidad si se proporcionan tasas de descuento
+    if (tasaDescuentoA > 0 || tasaDescuentoB > 0) {
+        analisis += `\nAnálisis de Viabilidad:`;
+        
+        let viableA = tirA >= tasaDescuentoA;
+        let viableB = tirB >= tasaDescuentoB;
+        
+        if (viableA && viableB) {
+            analisis += `\nAmbas alternativas son viables (TIR >= tasa de descuento).`;
+            analisis += `\nAlternativa ${mejor} es preferible por su mayor rentabilidad.`;
+        } else if (!viableA && !viableB) {
+            analisis += `\nAmbas alternativas no son viables (TIR < tasa de descuento).`;
+        } else if (viableA) {
+            analisis += `\nSolo Alternativa A es viable (TIR >= tasa de descuento).`;
+        } else {
+            analisis += `\nSolo Alternativa B es viable (TIR >= tasa de descuento).`;
+        }
+    }
     
     return { mejor, analisis };
 }
@@ -313,9 +358,11 @@ function analizarTIR(tirA, tirB) {
  * @param {number} vidaUtilA - Vida útil de Alternativa A
  * @param {number} vidaUtilB - Vida útil de Alternativa B
  * @param {object} metodos - {vpn: boolean, cae: boolean, tir: boolean}
+ * @param {number} tasaDescuentoA - Tasa de descuento de Alternativa A (en decimal)
+ * @param {number} tasaDescuentoB - Tasa de descuento de Alternativa B (en decimal)
  * @returns {object} Comparación y recomendación técnica
  */
-function compararAlternativas(resultadosA, resultadosB, vidaUtilA, vidaUtilB, metodos = {vpn: true, cae: true, tir: true}) {
+function compararAlternativas(resultadosA, resultadosB, vidaUtilA, vidaUtilB, metodos = {vpn: true, cae: true, tir: true}, tasaDescuentoA = 0, tasaDescuentoB = 0) {
     let comparacion = {
         mejorVPN: resultadosA.vpn > resultadosB.vpn ? 'A' : 'B',
         mejorTIR: resultadosA.tir > resultadosB.tir ? 'A' : 'B',
@@ -333,16 +380,19 @@ function compararAlternativas(resultadosA, resultadosB, vidaUtilA, vidaUtilB, me
     if (metodosSeleccionados === 1) {
         if (metodos.vpn) {
             const { mejor, analisis } = analizarVPN(resultadosA.vpn, resultadosB.vpn);
-            recomendacion = `${analisis}<br><br>`;
-            recomendacion += `<strong>Conclusión:</strong> Se recomienda la Alternativa ${mejor} por su superior valor presente neto.`;
+            recomendacion = `${analisis}
+`;
+            recomendacion += `Conclusión: Se recomienda la Alternativa ${mejor} por su superior valor presente neto.`;
         } else if (metodos.cae) {
             const { mejor, analisis } = analizarCAE(resultadosA.cae, resultadosB.cae);
-            recomendacion = `${analisis}<br><br>`;
-            recomendacion += `<strong>Conclusión:</strong> Se recomienda la Alternativa ${mejor} por su menor costo anual equivalente.`;
+            recomendacion = `${analisis}
+`;
+            recomendacion += `Conclusión: Se recomienda la Alternativa ${mejor} por su menor costo anual equivalente.`;
         } else if (metodos.tir) {
-            const { mejor, analisis } = analizarTIR(resultadosA.tir, resultadosB.tir);
-            recomendacion = `${analisis}<br><br>`;
-            recomendacion += `<strong>Conclusión:</strong> Se recomienda la Alternativa ${mejor} por su superior tasa de retorno.`;
+            const { mejor, analisis } = analizarTIR(resultadosA.tir, resultadosB.tir, tasaDescuentoA, tasaDescuentoB);
+            recomendacion = `${analisis}
+`;
+            recomendacion += `Conclusión: Se recomienda la Alternativa ${mejor} por su superior tasa de retorno.`;
         }
     }
     // CASO 2: Dos métodos seleccionados
@@ -353,52 +403,66 @@ function compararAlternativas(resultadosA, resultadosB, vidaUtilA, vidaUtilB, me
             const vpnAnalisis = analizarVPN(resultadosA.vpn, resultadosB.vpn);
             const caeAnalisis = analizarCAE(resultadosA.cae, resultadosB.cae);
             
-            analisisCompleto += `${vpnAnalisis.analisis}<br><br>`;
-            analisisCompleto += `${caeAnalisis.analisis}<br><br>`;
+            analisisCompleto += `${vpnAnalisis.analisis}
+`;
+            analisisCompleto += `${caeAnalisis.analisis}
+`;
             
             if (comparacion.mejorVPN === comparacion.mejorCAE) {
-                recomendacion = `${analisisCompleto}<strong>Análisis Integrado:</strong> Ambos criterios convergen. La Alternativa ${comparacion.mejorVPN} es superior en VPN y CAE, `;
-                recomendacion += `indicando una decisión clara desde perspectivas de valor absoluto y costos anualizados.`;
+                recomendacion = `${analisisCompleto}\nAnálisis Integrado: Ambos criterios convergen.`;
+                recomendacion += `\nLa Alternativa ${comparacion.mejorVPN} es superior en VPN y CAE.`;
+                recomendacion += `\nEstá indicando una decisión clara desde perspectivas de valor absoluto y costos anualizados.`;
             } else {
-                recomendacion = `${analisisCompleto}<strong>Análisis de Conflicto:</strong> VPN favorece Alternativa ${comparacion.mejorVPN} (mayor valor económico total), `;
-                recomendacion += `mientras CAE favorece Alternativa ${comparacion.mejorCAE} (menores costos anuales). `;
+                recomendacion = `${analisisCompleto}\nAnálisis de Conflicto:`;
+                recomendacion += `\nVPN favorece Alternativa ${comparacion.mejorVPN} (mayor valor económico total).`;
+                recomendacion += `\nCAE favorece Alternativa ${comparacion.mejorCAE} (menores costos anuales).`;
                 if (vidasDiferentes) {
-                    recomendacion += `Con vidas útiles diferentes (${vidaUtilA} vs ${vidaUtilB} años), <strong>se recomienda Alternativa ${comparacion.mejorCAE}</strong> `;
-                    recomendacion += `porque el CAE normaliza comparaciones entre proyectos de diferente duración.`;
+                    recomendacion += `\nCon vidas útiles diferentes (${vidaUtilA} vs ${vidaUtilB} años):`;
+                    recomendacion += `\nSe recomienda Alternativa ${comparacion.mejorCAE}.`;
+                    recomendacion += `\nEl CAE normaliza comparaciones entre proyectos de diferente duración.`;
                 } else {
-                    recomendacion += `<strong>Se recomienda Alternativa ${comparacion.mejorVPN}</strong> (mejor VPN) como criterio dominante para maximizar valor económico absoluto.`;
+                    recomendacion += `\nSe recomienda Alternativa ${comparacion.mejorVPN} (mejor VPN).`;
+                    recomendacion += `\nEs el criterio dominante para maximizar valor económico absoluto.`;
                 }
             }
         } else if (metodos.vpn && metodos.tir) {
             const vpnAnalisis = analizarVPN(resultadosA.vpn, resultadosB.vpn);
-            const tirAnalisis = analizarTIR(resultadosA.tir, resultadosB.tir);
+            const tirAnalisis = analizarTIR(resultadosA.tir, resultadosB.tir, tasaDescuentoA, tasaDescuentoB);
             
-            analisisCompleto += `${vpnAnalisis.analisis}<br><br>`;
-            analisisCompleto += `${tirAnalisis.analisis}<br><br>`;
+            analisisCompleto += `${vpnAnalisis.analisis}
+`;
+            analisisCompleto += `${tirAnalisis.analisis}
+`;
             
             if (comparacion.mejorVPN === comparacion.mejorTIR) {
-                recomendacion = `${analisisCompleto}<strong>Análisis Integrado:</strong> VPN y TIR coinciden. La Alternativa ${comparacion.mejorVPN} ofrece tanto mayor valor `;
-                recomendacion += `como superior tasa de retorno, representando la opción óptima.`;
+                recomendacion = `${analisisCompleto}\nAnálisis Integrado: VPN y TIR coinciden.`;
+                recomendacion += `\nLa Alternativa ${comparacion.mejorVPN} ofrece tanto mayor valor como superior tasa de retorno.`;
+                recomendacion += `\nRepresenta la opción óptima.`;
             } else {
-                recomendacion = `${analisisCompleto}<strong>Análisis de Conflicto:</strong> VPN favorece Alternativa ${comparacion.mejorVPN} (mayor creación de valor), `;
-                recomendacion += `TIR favorece Alternativa ${comparacion.mejorTIR} (mayor rentabilidad porcentual). `;
-                recomendacion += `<strong>Se recomienda Alternativa ${comparacion.mejorVPN}</strong> (mejor VPN) como criterio más conservador, `;
-                recomendacion += `ya que asume una tasa de reinversión más realista que la TIR.`;
+                recomendacion = `${analisisCompleto}\nAnálisis de Conflicto:`;
+                recomendacion += `\nVPN favorece Alternativa ${comparacion.mejorVPN} (mayor creación de valor).`;
+                recomendacion += `\nTIR favorece Alternativa ${comparacion.mejorTIR} (mayor rentabilidad porcentual).`;
+                recomendacion += `\nSe recomienda Alternativa ${comparacion.mejorVPN} (mejor VPN).`;
+                recomendacion += `\nEs el criterio más conservador, asume tasa de reinversión más realista que la TIR.`;
             }
         } else if (metodos.cae && metodos.tir) {
             const caeAnalisis = analizarCAE(resultadosA.cae, resultadosB.cae);
-            const tirAnalisis = analizarTIR(resultadosA.tir, resultadosB.tir);
+            const tirAnalisis = analizarTIR(resultadosA.tir, resultadosB.tir, tasaDescuentoA, tasaDescuentoB);
             
-            analisisCompleto += `${caeAnalisis.analisis}<br><br>`;
-            analisisCompleto += `${tirAnalisis.analisis}<br><br>`;
+            analisisCompleto += `${caeAnalisis.analisis}
+`;
+            analisisCompleto += `${tirAnalisis.analisis}
+`;
             
             if (comparacion.mejorCAE === comparacion.mejorTIR) {
-                recomendacion = `${analisisCompleto}<strong>Análisis Integrado:</strong> CAE y TIR coinciden. La Alternativa ${comparacion.mejorCAE} es superior `;
-                recomendacion += `tanto en costos anualizados como en rentabilidad porcentual.`;
+                recomendacion = `${analisisCompleto}\nAnálisis Integrado: CAE y TIR coinciden.`;
+                recomendacion += `\nLa Alternativa ${comparacion.mejorCAE} es superior tanto en costos anualizados como en rentabilidad porcentual.`;
             } else {
-                recomendacion = `${analisisCompleto}<strong>Análisis de Conflicto:</strong> CAE favorece Alternativa ${comparacion.mejorCAE} (costos menores), `;
-                recomendacion += `TIR favorece Alternativa ${comparacion.mejorTIR} (mayor rentabilidad). `;
-                recomendacion += `<strong>Se recomienda Alternativa ${comparacion.mejorCAE}</strong> (mejor CAE) priorizando eficiencia de costos.`;
+                recomendacion = `${analisisCompleto}\nAnálisis de Conflicto:`;
+                recomendacion += `\nCAE favorece Alternativa ${comparacion.mejorCAE} (costos menores).`;
+                recomendacion += `\nTIR favorece Alternativa ${comparacion.mejorTIR} (mayor rentabilidad).`;
+                recomendacion += `\nSe recomienda Alternativa ${comparacion.mejorCAE} (mejor CAE).`;
+                recomendacion += `\nPriorizando eficiencia de costos.`;
             }
         }
     }
@@ -406,17 +470,20 @@ function compararAlternativas(resultadosA, resultadosB, vidaUtilA, vidaUtilB, me
     else {
         const vpnAnalisis = analizarVPN(resultadosA.vpn, resultadosB.vpn);
         const caeAnalisis = analizarCAE(resultadosA.cae, resultadosB.cae);
-        const tirAnalisis = analizarTIR(resultadosA.tir, resultadosB.tir);
+        const tirAnalisis = analizarTIR(resultadosA.tir, resultadosB.tir, tasaDescuentoA, tasaDescuentoB);
         
-        let analisisCompleto = `${vpnAnalisis.analisis}<br><br>`;
-        analisisCompleto += `${caeAnalisis.analisis}<br><br>`;
-        analisisCompleto += `${tirAnalisis.analisis}<br><br>`;
+        let analisisCompleto = `${vpnAnalisis.analisis}
+`;
+        analisisCompleto += `${caeAnalisis.analisis}
+`;
+        analisisCompleto += `${tirAnalisis.analisis}
+`;
         
         if (vidasDiferentes) {
-            recomendacion = `${analisisCompleto}<strong>Decisión Multicriterio (Vidas Útiles Diferentes):</strong> `;
-            recomendacion += `Con vidas útiles distintas (${vidaUtilA} vs ${vidaUtilB} años), el CAE es el criterio más relevante. `;
-            recomendacion += `<strong>Se recomienda Alternativa ${comparacion.mejorCAE}</strong> por su inferior CAE, `;
-            recomendacion += `lo que significa menores costos anualizados en el período de evaluación común.`;
+            recomendacion = `${analisisCompleto}\nDecisión Multicriterio (Vidas Útiles Diferentes):`;
+            recomendacion += `\nCon vidas útiles distintas (${vidaUtilA} vs ${vidaUtilB} años), el CAE es el criterio más relevante.`;
+            recomendacion += `\nSe recomienda Alternativa ${comparacion.mejorCAE} por su inferior CAE.`;
+            recomendacion += `\nSignifica menores costos anualizados en el período de evaluación común.`;
         } else {
             let conteoA = 0, conteoB = 0;
             let criteriosGanadoresA = [], criteriosGanadoresB = [];
@@ -431,23 +498,27 @@ function compararAlternativas(resultadosA, resultadosB, vidaUtilA, vidaUtilB, me
             else { conteoB++; criteriosGanadoresB.push('TIR'); }
             
             if (conteoA > conteoB) {
-                recomendacion = `${analisisCompleto}<strong>Decisión Multicriterio (Votación 3/3):</strong> `;
-                recomendacion += `La Alternativa A gana en ${conteoA} de 3 criterios (${criteriosGanadoresA.join(', ')}), `;
-                recomendacion += `mientras Alternativa B gana en ${conteoB} criterio (${criteriosGanadoresB.join(', ')}). `;
-                recomendacion += `<strong>Se recomienda Alternativa A</strong> como la opción superior desde análisis holístico.`;
+                recomendacion = `${analisisCompleto}\nDecisión Multicriterio (Votación 3/3):`;
+                recomendacion += `\nAlternativa A gana en ${conteoA} de 3 criterios: ${criteriosGanadoresA.join(', ')}.`;
+                recomendacion += `\nAlternativa B gana en ${conteoB} criterio: ${criteriosGanadoresB.join(', ')}.`;
+                recomendacion += `\nSe recomienda Alternativa A como la opción superior desde análisis holístico.`;
             } else if (conteoB > conteoA) {
-                recomendacion = `${analisisCompleto}<strong>Decisión Multicriterio (Votación 3/3):</strong> `;
-                recomendacion += `La Alternativa B gana en ${conteoB} de 3 criterios (${criteriosGanadoresB.join(', ')}), `;
-                recomendacion += `mientras Alternativa A gana en ${conteoA} criterio (${criteriosGanadoresA.join(', ')}). `;
-                recomendacion += `<strong>Se recomienda Alternativa B</strong> como la opción superior desde análisis holístico.`;
+                recomendacion = `${analisisCompleto}\nDecisión Multicriterio (Votación 3/3):`;
+                recomendacion += `\nAlternativa B gana en ${conteoB} de 3 criterios: ${criteriosGanadoresB.join(', ')}.`;
+                recomendacion += `\nAlternativa A gana en ${conteoA} criterio: ${criteriosGanadoresA.join(', ')}.`;
+                recomendacion += `\nSe recomienda Alternativa B como la opción superior desde análisis holístico.`;
             } else if (comparacion.mejorVPN === comparacion.mejorTIR) {
-                recomendacion = `${analisisCompleto}<strong>Decisión Multicriterio (Análisis Técnico):</strong> `;
-                recomendacion += `Aunque hay divergencia con CAE, VPN y TIR convergen en Alternativa ${comparacion.mejorVPN}. `;
-                recomendacion += `<strong>Se recomienda Alternativa ${comparacion.mejorVPN}</strong> priorizando valor absoluto y rendimiento.`;
+                recomendacion = `${analisisCompleto}\nDecisión Multicriterio (Análisis Técnico):`;
+                recomendacion += `\nHay divergencia con CAE, pero VPN y TIR convergen en Alternativa ${comparacion.mejorVPN}.`;
+                recomendacion += `\nSe recomienda Alternativa ${comparacion.mejorVPN}.`;
+                recomendacion += `\nPriorizando valor absoluto y rendimiento.`;
             } else {
-                recomendacion = `${analisisCompleto}<strong>Decisión Multicriterio (Conflicto Técnico):</strong> `;
-                recomendacion += `Existe divergencia entre criterios: VPN favorece ${comparacion.mejorVPN}, TIR favorece ${comparacion.mejorTIR}, CAE favorece ${comparacion.mejorCAE}. `;
-                recomendacion += `Esta situación requiere evaluar los objetivos estratégicos de la empresa: ¿Maximizar valor? ¿Optimizar rentabilidad? ¿Minimizar costos?`;
+                recomendacion = `${analisisCompleto}\nDecisión Multicriterio (Conflicto Técnico):`;
+                recomendacion += `\nExiste divergencia entre criterios.`;
+                recomendacion += `\nVPN favorece Alternativa ${comparacion.mejorVPN}.`;
+                recomendacion += `\nTIR favorece Alternativa ${comparacion.mejorTIR}.`;
+                recomendacion += `\nCAE favorece Alternativa ${comparacion.mejorCAE}.`;
+                recomendacion += `\nRequiere evaluar objetivos estratégicos: ¿Maximizar valor? ¿Optimizar rentabilidad? ¿Minimizar costos?`;
             }
         }
     }
