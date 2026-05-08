@@ -62,14 +62,43 @@
 
                         <div class="mb-3">
                             <label for="vidaUtilA" class="form-label fw-bold">Vida Útil (años)</label>
-                            <input type="number" class="form-control" id="vidaUtilA" placeholder="0" step="1">
+                            <input type="number" class="form-control" id="vidaUtilA" placeholder="0" step="1" onchange="actualizarTablasFlujosVariable('A')">
                             <small class="text-muted">Duración del proyecto</small>
                         </div>
 
+                        <!-- Selector de tipo de flujo -->
                         <div class="mb-3">
+                            <label class="form-label fw-bold">💵 Tipo de Flujo</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipoFlujoA" id="flujoFijoA" value="fijo" checked onchange="toggleFlujosVariablesA()">
+                                    <label class="form-check-label" for="flujoFijoA">
+                                        Flujo Fijo
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipoFlujoA" id="flujoVariableA" value="variable" onchange="toggleFlujosVariablesA()">
+                                    <label class="form-check-label" for="flujoVariableA">
+                                        Flujo Variable
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Flujo Fijo (mostrado por defecto) -->
+                        <div id="contenedorFlujoFijoA" class="mb-3">
                             <label for="flujoEfectivoA" class="form-label fw-bold">Flujo de Efectivo Anual ($)</label>
                             <input type="number" class="form-control" id="flujoEfectivoA" placeholder="0.00" step="0.01">
-                            <small class="text-muted">Ingreso anual promedio</small>
+                            <small class="text-muted">Ingreso anual constante</small>
+                        </div>
+
+                        <!-- Flujo Variable (oculto por defecto) -->
+                        <div id="contenedorFlujosVariablesA" style="display: none;" class="mb-3">
+                            <label class="form-label fw-bold">📊 Flujos por Año ($)</label>
+                            <div id="tablaFlujosVariablesA" style="max-height: 250px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 0.5rem;">
+                                <p class="text-muted text-center py-2">Ingresa primero la vida útil</p>
+                            </div>
+                            <small class="text-muted">Ingresa el flujo específico para cada año</small>
                         </div>
 
                         <div class="mb-3">
@@ -102,14 +131,43 @@
 
                         <div class="mb-3">
                             <label for="vidaUtilB" class="form-label fw-bold">Vida Útil (años)</label>
-                            <input type="number" class="form-control" id="vidaUtilB" placeholder="0" step="1">
+                            <input type="number" class="form-control" id="vidaUtilB" placeholder="0" step="1" onchange="actualizarTablasFlujosVariable('B')">
                             <small class="text-muted">Duración del proyecto</small>
                         </div>
 
+                        <!-- Selector de tipo de flujo -->
                         <div class="mb-3">
+                            <label class="form-label fw-bold">💵 Tipo de Flujo</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipoFlujoB" id="flujoFijoB" value="fijo" checked onchange="toggleFlujosVariablesB()">
+                                    <label class="form-check-label" for="flujoFijoB">
+                                        Flujo Fijo
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="tipoFlujoB" id="flujoVariableB" value="variable" onchange="toggleFlujosVariablesB()">
+                                    <label class="form-check-label" for="flujoVariableB">
+                                        Flujo Variable
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Flujo Fijo (mostrado por defecto) -->
+                        <div id="contenedorFlujoFijoB" class="mb-3">
                             <label for="flujoEfectivoB" class="form-label fw-bold">Flujo de Efectivo Anual ($)</label>
                             <input type="number" class="form-control" id="flujoEfectivoB" placeholder="0.00" step="0.01">
-                            <small class="text-muted">Ingreso anual promedio</small>
+                            <small class="text-muted">Ingreso anual constante</small>
+                        </div>
+
+                        <!-- Flujo Variable (oculto por defecto) -->
+                        <div id="contenedorFlujosVariablesB" style="display: none;" class="mb-3">
+                            <label class="form-label fw-bold">📊 Flujos por Año ($)</label>
+                            <div id="tablaFlujosVariablesB" style="max-height: 250px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 0.5rem;">
+                                <p class="text-muted text-center py-2">Ingresa primero la vida útil</p>
+                            </div>
+                            <small class="text-muted">Ingresa el flujo específico para cada año</small>
                         </div>
 
                         <div class="mb-3">

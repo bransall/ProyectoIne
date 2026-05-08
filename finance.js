@@ -22,6 +22,7 @@ function estandarizarTasa(tasa) {
 
 /**
  * Valida que todos los campos de entrada sean válidos
+ * Soporta tanto flujos fijos como variables
  * @param {object} datos - Objeto con los datos de entrada
  * @returns {object} {valido: boolean, mensaje: string}
  */
@@ -30,7 +31,6 @@ function validarDatos(datos) {
         'inversion',
         'tasa',
         'vidaUtil',
-        'flujoEfectivo',
         'valorSalvamento'
     ];
 
@@ -48,6 +48,58 @@ function validarDatos(datos) {
                 valido: false,
                 mensaje: `${campo} debe ser un número válido`
             };
+        }
+    }
+
+    // Validar tipo de flujo
+    if (!datos.tipoFlujo || (datos.tipoFlujo !== 'fijo' && datos.tipoFlujo !== 'variable')) {
+        return {
+            valido: false,
+            mensaje: "Tipo de flujo inválido"
+        };
+    }
+
+    // Validar flujo según el tipo
+    if (datos.tipoFlujo === 'fijo') {
+        if (datos.flujoEfectivo === null || datos.flujoEfectivo === undefined || datos.flujoEfectivo === '') {
+            return {
+                valido: false,
+                mensaje: "El flujo de efectivo anual es obligatorio para flujos fijos"
+            };
+        }
+        
+        let flujo = parseFloat(datos.flujoEfectivo);
+        if (isNaN(flujo)) {
+            return {
+                valido: false,
+                mensaje: "El flujo de efectivo anual debe ser un número válido"
+            };
+        }
+    } else if (datos.tipoFlujo === 'variable') {
+        if (!datos.flujosVariable || !Array.isArray(datos.flujosVariable)) {
+            return {
+                valido: false,
+                mensaje: "Los flujos variables no están disponibles"
+            };
+        }
+        
+        const vidaUtil = parseInt(datos.vidaUtil);
+        if (datos.flujosVariable.length !== vidaUtil) {
+            return {
+                valido: false,
+                mensaje: `Debe ingresar exactamente ${vidaUtil} flujos (uno por cada año)`
+            };
+        }
+        
+        // Validar que todos los flujos sean números
+        for (let i = 0; i < datos.flujosVariable.length; i++) {
+            let flujo = parseFloat(datos.flujosVariable[i]);
+            if (isNaN(flujo)) {
+                return {
+                    valido: false,
+                    mensaje: `Flujo del año ${i + 1} debe ser un número válido`
+                };
+            }
         }
     }
 
@@ -76,24 +128,33 @@ function validarDatos(datos) {
 
 /**
  * Calcula el Valor Presente Neto (VPN)
+ * Soporta tanto flujos fijos como variables
  * VPN = -I₀ + Σ[FC_t / (1+i)^t] + [VS / (1+i)^n]
  * 
  * @param {number} inversionInicial - Inversión inicial
  * @param {number} tasaDescuento - Tasa de descuento (en decimal)
- * @param {number} flujoEfectivo - Flujo de efectivo anual
+ * @param {number|array} flujos - Flujo de efectivo anual (número fijo) o array de flujos variables
  * @param {number} vidaUtil - Vida útil en años
  * @param {number} valorSalvamento - Valor de salvamento
  * @returns {number} VPN calculado
  */
-function calcularVPN(inversionInicial, tasaDescuento, flujoEfectivo, vidaUtil, valorSalvamento) {
+function calcularVPN(inversionInicial, tasaDescuento, flujos, vidaUtil, valorSalvamento) {
     try {
         tasaDescuento = estandarizarTasa(tasaDescuento);
         
         let vpn = -inversionInicial;
         
-        // Suma de flujos de efectivo descontados
-        for (let t = 1; t <= vidaUtil; t++) {
-            vpn += flujoEfectivo / Math.pow(1 + tasaDescuento, t);
+        // Verificar si es flujo fijo o variable
+        if (Array.isArray(flujos)) {
+            // Flujos variables
+            for (let t = 1; t <= vidaUtil && t <= flujos.length; t++) {
+                vpn += flujos[t - 1] / Math.pow(1 + tasaDescuento, t);
+            }
+        } else {
+            // Flujo fijo
+            for (let t = 1; t <= vidaUtil; t++) {
+                vpn += flujos / Math.pow(1 + tasaDescuento, t);
+            }
         }
         
         // Agregar valor de salvamento en el último año
@@ -144,15 +205,16 @@ function calcularCAE(vpn, tasaDescuento, vidaUtil) {
 
 /**
  * Calcula la Tasa Interna de Retorno (TIR) usando método de bisección
+ * Soporta tanto flujos fijos como variables
  * TIR es la tasa donde VPN = 0
  * 
  * @param {number} inversionInicial - Inversión inicial
- * @param {number} flujoEfectivo - Flujo de efectivo anual
+ * @param {number|array} flujos - Flujo de efectivo anual (número fijo) o array de flujos variables
  * @param {number} vidaUtil - Vida útil en años
  * @param {number} valorSalvamento - Valor de salvamento
  * @returns {number} TIR en porcentaje
  */
-function calcularTIR(inversionInicial, flujoEfectivo, vidaUtil, valorSalvamento) {
+function calcularTIR(inversionInicial, flujos, vidaUtil, valorSalvamento) {
     try {
         // Función auxiliar para calcular VPN con una tasa dada
         function vpnConTasa(tasa) {
@@ -162,9 +224,20 @@ function calcularTIR(inversionInicial, flujoEfectivo, vidaUtil, valorSalvamento)
             }
             
             let vpn = -inversionInicial;
-            for (let t = 1; t <= vidaUtil; t++) {
-                vpn += flujoEfectivo / Math.pow(1 + tasa, t);
+            
+            // Verificar si es flujo fijo o variable
+            if (Array.isArray(flujos)) {
+                // Flujos variables
+                for (let t = 1; t <= vidaUtil && t <= flujos.length; t++) {
+                    vpn += flujos[t - 1] / Math.pow(1 + tasa, t);
+                }
+            } else {
+                // Flujo fijo
+                for (let t = 1; t <= vidaUtil; t++) {
+                    vpn += flujos / Math.pow(1 + tasa, t);
+                }
             }
+            
             vpn += valorSalvamento / Math.pow(1 + tasa, vidaUtil);
             return vpn;
         }
@@ -191,12 +264,14 @@ function calcularTIR(inversionInicial, flujoEfectivo, vidaUtil, valorSalvamento)
             
             // Si aún no hay cambio de signo, retornar null indicando que no hay TIR real
             if ((vpnBaja > 0 && vpnAlta > 0) || (vpnBaja < 0 && vpnAlta < 0)) {
-                // Estimar una TIR aproximada usando método simple
-                let paybackSimple = inversionInicial / flujoEfectivo;
-                if (paybackSimple <= vidaUtil) {
-                    // Proyecto con retorno simple, estimar TIR
-                    let estimado = (flujoEfectivo / inversionInicial) - (1 / vidaUtil);
-                    return Math.max(0, Math.min(100, estimado * 100));
+                // Estimar una TIR aproximada usando método simple (para flujo fijo)
+                if (!Array.isArray(flujos)) {
+                    let paybackSimple = inversionInicial / flujos;
+                    if (paybackSimple <= vidaUtil) {
+                        // Proyecto con retorno simple, estimar TIR
+                        let estimado = (flujos / inversionInicial) - (1 / vidaUtil);
+                        return Math.max(0, Math.min(100, estimado * 100));
+                    }
                 }
                 return 0; // Si no es viable, retornar 0%
             }
@@ -242,15 +317,21 @@ function calcularTIR(inversionInicial, flujoEfectivo, vidaUtil, valorSalvamento)
 
 /**
  * Realiza todos los cálculos para una alternativa
+ * Soporta tanto flujos fijos como variables
  * @param {object} alternativa - Objeto con los parámetros de la alternativa
  * @returns {object} Objeto con los resultados
  */
 function calcularAlternativa(alternativa) {
     try {
+        // Determinar qué flujos usar según el tipo
+        const flujos = alternativa.tipoFlujo === 'variable' ? 
+            alternativa.flujosVariable : 
+            alternativa.flujoEfectivo;
+        
         const vpn = calcularVPN(
             alternativa.inversionInicial,
             alternativa.tasaDescuento,
-            alternativa.flujoEfectivo,
+            flujos,
             alternativa.vidaUtil,
             alternativa.valorSalvamento
         );
@@ -259,7 +340,7 @@ function calcularAlternativa(alternativa) {
 
         const tir = calcularTIR(
             alternativa.inversionInicial,
-            alternativa.flujoEfectivo,
+            flujos,
             alternativa.vidaUtil,
             alternativa.valorSalvamento
         );

@@ -118,6 +118,7 @@ function cerrarAyudaAtajos() {
 
 /**
  * Valida todos los campos del formulario
+ * Considera si el flujo es fijo o variable
  * @returns {Object} Objeto con validaciones y errores
  */
 function validarFormularioCompleto() {
@@ -133,6 +134,22 @@ function validarFormularioCompleto() {
         { id: 'flujoEfectivoB', nombre: 'Flujo B', min: 0, requerido: true },
         { id: 'valorSalvamentoB', nombre: 'Salvamento B', min: 0, requerido: false }
     ];
+    
+    // Ajustar requeridos basado en el tipo de flujo seleccionado
+    const tipoFlujoA = document.querySelector('input[name="tipoFlujoA"]:checked')?.value || 'fijo';
+    const tipoFlujoB = document.querySelector('input[name="tipoFlujoB"]:checked')?.value || 'fijo';
+    
+    // Si Alternativa A tiene flujo variable, no requerir flujoEfectivoA
+    if (tipoFlujoA === 'variable') {
+        const campoFlujoA = campos.find(c => c.id === 'flujoEfectivoA');
+        if (campoFlujoA) campoFlujoA.requerido = false;
+    }
+    
+    // Si Alternativa B tiene flujo variable, no requerir flujoEfectivoB
+    if (tipoFlujoB === 'variable') {
+        const campoFlujoB = campos.find(c => c.id === 'flujoEfectivoB');
+        if (campoFlujoB) campoFlujoB.requerido = false;
+    }
     
     const errores = [];
     const validaciones = {};

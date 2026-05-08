@@ -59,18 +59,37 @@ function deseleccionarTodos() {
 
 /**
  * Obtiene los datos del formulario para una alternativa
+ * Soporta tanto flujos fijos como variables
  * @param {string} alternativa - 'A' o 'B'
  * @returns {object} Objeto con los datos
  */
 function obtenerDatos(alternativa) {
+    const tipoFlujo = obtenerTipoFlujo(alternativa);
     const sufijo = alternativa;
-    return {
+    
+    // Siempre obtener el valor del campo, incluso si no se va a usar
+    const flujoEfectivoRaw = document.getElementById(`flujoEfectivo${sufijo}`).value;
+    
+    const datos = {
         inversion: document.getElementById(`inversion${sufijo}`).value,
         tasa: document.getElementById(`tasaDescuento${sufijo}`).value,
         vidaUtil: document.getElementById(`vidaUtil${sufijo}`).value,
-        flujoEfectivo: document.getElementById(`flujoEfectivo${sufijo}`).value,
-        valorSalvamento: document.getElementById(`valorSalvamento${sufijo}`).value
+        valorSalvamento: document.getElementById(`valorSalvamento${sufijo}`).value,
+        tipoFlujo: tipoFlujo
     };
+    
+    // Obtener flujo según el tipo
+    if (tipoFlujo === 'variable') {
+        datos.flujosVariable = obtenerFlujosVariable(alternativa);
+        // Para flujos variables, no incluir flujoEfectivo o setearlo a null
+        datos.flujoEfectivo = null;
+    } else {
+        // Para flujos fijos, usar el valor del campo
+        datos.flujoEfectivo = flujoEfectivoRaw || '';
+        datos.flujosVariable = null;
+    }
+    
+    return datos;
 }
 
 /**
@@ -152,21 +171,25 @@ function calcularResultados() {
             return;
         }
         
-        // Convertir a números
+        // Convertir a números y preparar datos para cálculo
         datosAlternativaA = {
             inversionInicial: parseFloat(datosAlternativaA.inversion),
             tasaDescuento: parseFloat(datosAlternativaA.tasa),
             vidaUtil: parseInt(datosAlternativaA.vidaUtil),
-            flujoEfectivo: parseFloat(datosAlternativaA.flujoEfectivo),
-            valorSalvamento: parseFloat(datosAlternativaA.valorSalvamento)
+            valorSalvamento: parseFloat(datosAlternativaA.valorSalvamento),
+            tipoFlujo: datosAlternativaA.tipoFlujo,
+            flujoEfectivo: datosAlternativaA.tipoFlujo === 'fijo' ? parseFloat(datosAlternativaA.flujoEfectivo) : null,
+            flujosVariable: datosAlternativaA.tipoFlujo === 'variable' ? datosAlternativaA.flujosVariable.map(f => parseFloat(f)) : null
         };
         
         datosAlternativaB = {
             inversionInicial: parseFloat(datosAlternativaB.inversion),
             tasaDescuento: parseFloat(datosAlternativaB.tasa),
             vidaUtil: parseInt(datosAlternativaB.vidaUtil),
-            flujoEfectivo: parseFloat(datosAlternativaB.flujoEfectivo),
-            valorSalvamento: parseFloat(datosAlternativaB.valorSalvamento)
+            valorSalvamento: parseFloat(datosAlternativaB.valorSalvamento),
+            tipoFlujo: datosAlternativaB.tipoFlujo,
+            flujoEfectivo: datosAlternativaB.tipoFlujo === 'fijo' ? parseFloat(datosAlternativaB.flujoEfectivo) : null,
+            flujosVariable: datosAlternativaB.tipoFlujo === 'variable' ? datosAlternativaB.flujosVariable.map(f => parseFloat(f)) : null
         };
         
         // Calcular resultados
@@ -282,14 +305,28 @@ function mostrarResultados() {
     document.getElementById('invA-resumen').textContent = formatearMoneda(datosAlternativaA.inversionInicial);
     document.getElementById('tasaA-resumen').textContent = formatearNumero(datosAlternativaA.tasaDescuento);
     document.getElementById('vidaA-resumen').textContent = datosAlternativaA.vidaUtil;
-    document.getElementById('flujoA-resumen').textContent = formatearMoneda(datosAlternativaA.flujoEfectivo);
+    
+    // Mostrar flujo según tipo
+    if (datosAlternativaA.tipoFlujo === 'variable') {
+        const flujosTexto = datosAlternativaA.flujosVariable.map((f, i) => `Año ${i+1}: ${formatearMoneda(f)}`).join(' | ');
+        document.getElementById('flujoA-resumen').textContent = `Variable: ${flujosTexto}`;
+    } else {
+        document.getElementById('flujoA-resumen').textContent = formatearMoneda(datosAlternativaA.flujoEfectivo);
+    }
     document.getElementById('salvA-resumen').textContent = formatearMoneda(datosAlternativaA.valorSalvamento);
     
     // Datos de entrada resumen - Alternativa B
     document.getElementById('invB-resumen').textContent = formatearMoneda(datosAlternativaB.inversionInicial);
     document.getElementById('tasaB-resumen').textContent = formatearNumero(datosAlternativaB.tasaDescuento);
     document.getElementById('vidaB-resumen').textContent = datosAlternativaB.vidaUtil;
-    document.getElementById('flujoB-resumen').textContent = formatearMoneda(datosAlternativaB.flujoEfectivo);
+    
+    // Mostrar flujo según tipo
+    if (datosAlternativaB.tipoFlujo === 'variable') {
+        const flujosTexto = datosAlternativaB.flujosVariable.map((f, i) => `Año ${i+1}: ${formatearMoneda(f)}`).join(' | ');
+        document.getElementById('flujoB-resumen').textContent = `Variable: ${flujosTexto}`;
+    } else {
+        document.getElementById('flujoB-resumen').textContent = formatearMoneda(datosAlternativaB.flujoEfectivo);
+    }
     document.getElementById('salvB-resumen').textContent = formatearMoneda(datosAlternativaB.valorSalvamento);
     
     // Recomendación (usar innerHTML para permitir etiquetas HTML)
@@ -314,6 +351,20 @@ function limpiarFormulario() {
     campos.forEach(id => {
         document.getElementById(id).value = '';
     });
+    
+    // Resetear selectores de flujo a "Flujo Fijo" (por defecto)
+    document.getElementById('flujoFijoA').checked = true;
+    document.getElementById('flujoFijoB').checked = true;
+    
+    // Mostrar contenedores de flujo fijo y ocultar variables
+    document.getElementById('contenedorFlujoFijoA').style.display = 'block';
+    document.getElementById('contenedorFlujosVariablesA').style.display = 'none';
+    document.getElementById('contenedorFlujoFijoB').style.display = 'block';
+    document.getElementById('contenedorFlujosVariablesB').style.display = 'none';
+    
+    // Limpiar tablas de flujos variables
+    document.getElementById('tablaFlujosVariablesA').innerHTML = '<p class="text-muted text-center py-2">Ingresa primero la vida útil</p>';
+    document.getElementById('tablaFlujosVariablesB').innerHTML = '<p class="text-muted text-center py-2">Ingresa primero la vida útil</p>';
     
     // Resetear métodos a valores por defecto (todos seleccionados)
     seleccionarTodos();
@@ -396,6 +447,110 @@ function mostrarAlertaExito(mensaje) {
     setTimeout(() => {
         alerta.remove();
     }, 4000);
+}
+
+/**
+ * Obtiene el tipo de flujo seleccionado para una alternativa
+ * @param {string} alternativa - 'A' o 'B'
+ * @returns {string} 'fijo' o 'variable'
+ */
+function obtenerTipoFlujo(alternativa) {
+    const radioFijo = document.getElementById(`flujoFijo${alternativa}`);
+    const radioVariable = document.getElementById(`flujoVariable${alternativa}`);
+    
+    if (radioVariable && radioVariable.checked) {
+        return 'variable';
+    }
+    return 'fijo';
+}
+
+/**
+ * Alterna entre flujo fijo y variable para Alternativa A
+ */
+function toggleFlujosVariablesA() {
+    const tipoFlujo = obtenerTipoFlujo('A');
+    const contenedorFijo = document.getElementById('contenedorFlujoFijoA');
+    const contenedorVariable = document.getElementById('contenedorFlujosVariablesA');
+    
+    if (tipoFlujo === 'variable') {
+        contenedorFijo.style.display = 'none';
+        contenedorVariable.style.display = 'block';
+        actualizarTablasFlujosVariable('A');
+    } else {
+        contenedorFijo.style.display = 'block';
+        contenedorVariable.style.display = 'none';
+    }
+}
+
+/**
+ * Alterna entre flujo fijo y variable para Alternativa B
+ */
+function toggleFlujosVariablesB() {
+    const tipoFlujo = obtenerTipoFlujo('B');
+    const contenedorFijo = document.getElementById('contenedorFlujoFijoB');
+    const contenedorVariable = document.getElementById('contenedorFlujosVariablesB');
+    
+    if (tipoFlujo === 'variable') {
+        contenedorFijo.style.display = 'none';
+        contenedorVariable.style.display = 'block';
+        actualizarTablasFlujosVariable('B');
+    } else {
+        contenedorFijo.style.display = 'block';
+        contenedorVariable.style.display = 'none';
+    }
+}
+
+/**
+ * Actualiza la tabla de flujos variables cuando cambia la vida útil
+ * @param {string} alternativa - 'A' o 'B'
+ */
+function actualizarTablasFlujosVariable(alternativa) {
+    const vidaUtil = parseInt(document.getElementById(`vidaUtil${alternativa}`).value) || 0;
+    const contenedor = document.getElementById(`tablaFlujosVariables${alternativa}`);
+    
+    if (vidaUtil <= 0) {
+        contenedor.innerHTML = '<p class="text-muted text-center py-2">Ingresa una vida útil válida (mayor a 0)</p>';
+        return;
+    }
+    
+    // Crear tabla de entrada de flujos
+    let html = '<table class="table table-sm table-bordered mb-0"><tbody>';
+    
+    for (let año = 1; año <= vidaUtil; año++) {
+        const inputId = `flujoVariable${alternativa}_Año${año}`;
+        const valorActual = document.getElementById(inputId)?.value || '';
+        
+        html += `
+            <tr>
+                <td style="width: 40%; font-weight: bold;">Año ${año}:</td>
+                <td style="width: 60%;">
+                    <input type="number" class="form-control form-control-sm" id="${inputId}" 
+                           placeholder="0.00" step="0.01" value="${valorActual}">
+                </td>
+            </tr>
+        `;
+    }
+    
+    html += '</tbody></table>';
+    contenedor.innerHTML = html;
+}
+
+/**
+ * Obtiene los flujos variables para una alternativa
+ * @param {string} alternativa - 'A' o 'B'
+ * @returns {array} Array de flujos por año
+ */
+function obtenerFlujosVariable(alternativa) {
+    const vidaUtil = parseInt(document.getElementById(`vidaUtil${alternativa}`).value) || 0;
+    const flujos = [];
+    
+    for (let año = 1; año <= vidaUtil; año++) {
+        const inputId = `flujoVariable${alternativa}_Año${año}`;
+        const valor = parseFloat(document.getElementById(inputId)?.value || 0);
+        flujos.push(valor);
+    }
+    
+    return flujos;
 }
 
 /**
