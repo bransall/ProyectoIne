@@ -19,6 +19,14 @@ function generarExcel() {
         // Agregar hojas
         agregarHojaEntrada(wb);
         agregarHojaResultados(wb);
+        
+        // Agregar hoja de flujos variables si existen
+        const tieneFlujosVariables = (datosAlternativaA.tipoFlujo === 'variable' && datosAlternativaA.flujosVariable) ||
+                                     (datosAlternativaB.tipoFlujo === 'variable' && datosAlternativaB.flujosVariable);
+        if (tieneFlujosVariables) {
+            agregarHojaFlujosVariables(wb);
+        }
+        
         agregarHojaSensibilidad(wb);
         agregarHojaComparativo(wb);
         
@@ -48,11 +56,19 @@ function agregarHojaEntrada(wb) {
     datos.push(['ALTERNATIVA A', '', 'ALTERNATIVA B']);
     datos.push(['Parámetro', 'Valor', '', 'Parámetro', 'Valor']);
     
+    // Función auxiliar para mostrar flujos
+    const obtenerMostrarFlujo = (datos) => {
+        if (datos.tipoFlujo === 'variable' && datos.flujosVariable) {
+            return 'Variables (Ver detalles abajo)';
+        }
+        return formatearMoneda(datos.flujoEfectivo);
+    };
+    
     const campos = [
         ['Inversión Inicial', formatearMoneda(datosAlternativaA.inversionInicial), '', 'Inversión Inicial', formatearMoneda(datosAlternativaB.inversionInicial)],
         ['Tasa de Descuento', formatearPorcentaje(datosAlternativaA.tasaDescuento) + '%', '', 'Tasa de Descuento', formatearPorcentaje(datosAlternativaB.tasaDescuento) + '%'],
         ['Vida Útil (años)', datosAlternativaA.vidaUtil, '', 'Vida Útil (años)', datosAlternativaB.vidaUtil],
-        ['Flujo Anual', formatearMoneda(datosAlternativaA.flujoEfectivo), '', 'Flujo Anual', formatearMoneda(datosAlternativaB.flujoEfectivo)],
+        ['Flujo', obtenerMostrarFlujo(datosAlternativaA), '', 'Flujo', obtenerMostrarFlujo(datosAlternativaB)],
         ['Salvamento', formatearMoneda(datosAlternativaA.valorSalvamento), '', 'Salvamento', formatearMoneda(datosAlternativaB.valorSalvamento)]
     ];
     
@@ -114,6 +130,95 @@ function agregarHojaResultados(wb) {
     const ws = XLSX.utils.aoa_to_sheet(datos);
     ws['!cols'] = [{wch: 30}, {wch: 18}, {wch: 18}, {wch: 12}];
     XLSX.utils.book_append_sheet(wb, ws, "Resultados");
+}
+
+/**
+ * Agrega la hoja de flujos variables al workbook (si existen)
+ */
+function agregarHojaFlujosVariables(wb) {
+    const datos = [];
+    
+    // Encabezado
+    datos.push(['DETALLE DE FLUJOS VARIABLES']);
+    datos.push(['']);
+    
+    // Verificar cuáles alternativas tienen flujos variables
+    const tieneFlujosVariablesA = datosAlternativaA.tipoFlujo === 'variable' && datosAlternativaA.flujosVariable;
+    const tieneFlujosVariablesB = datosAlternativaB.tipoFlujo === 'variable' && datosAlternativaB.flujosVariable;
+    
+    // Crear encabezado de la tabla
+    const encabezado = ['Año'];
+    if (tieneFlujosVariablesA) encabezado.push('Flujo Alternativa A');
+    if (tieneFlujosVariablesB) encabezado.push('Flujo Alternativa B');
+    datos.push(encabezado);
+    
+    // Obtener máximo de años
+    const maxAños = Math.max(
+        tieneFlujosVariablesA ? datosAlternativaA.flujosVariable.length : 0,
+        tieneFlujosVariablesB ? datosAlternativaB.flujosVariable.length : 0
+    );
+    
+    // Agregar filas para cada año
+    for (let año = 1; año <= maxAños; año++) {
+        const fila = [año];
+        
+        if (tieneFlujosVariablesA) {
+            fila.push(datosAlternativaA.flujosVariable[año - 1] || 0);
+        }
+        if (tieneFlujosVariablesB) {
+            fila.push(datosAlternativaB.flujosVariable[año - 1] || 0);
+        }
+        
+        datos.push(fila);
+    }
+    
+    // Agregar fila de totales
+    datos.push(['']);
+    const filaTotal = ['TOTAL'];
+    if (tieneFlujosVariablesA) {
+        const totalA = datosAlternativaA.flujosVariable.reduce((sum, f) => sum + f, 0);
+        filaTotal.push(totalA);
+    }
+    if (tieneFlujosVariablesB) {
+        const totalB = datosAlternativaB.flujosVariable.reduce((sum, f) => sum + f, 0);
+        filaTotal.push(totalB);
+    }
+    datos.push(filaTotal);
+    
+    // Crear hoja con formato
+    const ws = XLSX.utils.aoa_to_sheet(datos);
+    
+    // Configurar ancho de columnas
+    const numCols = encabezado.length;
+    ws['!cols'] = [];
+    ws['!cols'][0] = {wch: 10}; // Columna de años
+    for (let i = 1; i < numCols; i++) {
+        ws['!cols'][i] = {wch: 22}; // Columnas de flujos
+    }
+    
+    // Dar formato numérico a los flujos
+    for (let i = 2; i < datos.length - 2; i++) { // -2 para no incluir fila vacía y de totales
+        for (let j = 1; j < numCols; j++) {
+            const cellRef = XLSX.utils.encode_col(j) + (i + 1);
+            if (ws[cellRef]) {
+                ws[cellRef].t = 'n';
+                ws[cellRef].z = '#,##0.00';
+            }
+        }
+    }
+    
+    // Dar formato a fila de totales
+    const filaTotal_idx = datos.length - 1;
+    for (let j = 1; j < numCols; j++) {
+        const cellRef = XLSX.utils.encode_col(j) + (filaTotal_idx + 1);
+        if (ws[cellRef]) {
+            ws[cellRef].t = 'n';
+            ws[cellRef].z = '#,##0.00';
+            ws[cellRef].s = {bold: true}; // Negrilla
+        }
+    }
+    
+    XLSX.utils.book_append_sheet(wb, ws, "Flujos Variables");
 }
 
 /**

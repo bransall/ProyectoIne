@@ -12,47 +12,55 @@
  * @param {Object} datosB - Datos de alternativa B
  * @param {Object} resultadosA - Resultados de alternativa A
  * @param {Object} resultadosB - Resultados de alternativa B
+ * @param {Object} metodosSeleccionados - Métodos a incluir en la matriz {vpn, cae, tir}
  * @returns {Array} Matriz de criterios con puntajes
  */
-function calcularMatrizComparativa(datosA, datosB, resultadosA, resultadosB) {
-    const criterios = [
+function calcularMatrizComparativa(datosA, datosB, resultadosA, resultadosB, metodosSeleccionados = {vpn: true, cae: true, tir: true}) {
+    const criteriosTodos = [
         {
             nombre: 'VPN (Valor Presente Neto)',
             descripcion: 'Valor económico absoluto creado',
             valorA: resultadosA.vpn,
             valorB: resultadosB.vpn,
-            peso: 0.35,
             unidad: 'US$',
-            tipo: 'mayor_mejor'
+            tipo: 'mayor_mejor',
+            metodo: 'vpn'
         },
         {
             nombre: 'CAE (Costo Anual Equivalente)',
             descripcion: 'Costo normalizado anual',
             valorA: resultadosA.cae,
             valorB: resultadosB.cae,
-            peso: 0.30,
             unidad: 'US$',
-            tipo: 'menor_mejor'
+            tipo: 'menor_mejor',
+            metodo: 'cae'
         },
         {
             nombre: 'TIR (Tasa Interna de Retorno)',
             descripcion: 'Rentabilidad porcentual',
             valorA: resultadosA.tir,
             valorB: resultadosB.tir,
-            peso: 0.25,
             unidad: '%',
-            tipo: 'mayor_mejor'
-        },
-        {
-            nombre: 'Recuperación (Payback Normado)',
-            descripcion: 'Tiempo de recuperación relativo',
-            valorA: calcularPayback(datosA, resultadosA.vpn),
-            valorB: calcularPayback(datosB, resultadosB.vpn),
-            peso: 0.10,
-            unidad: 'años',
-            tipo: 'menor_mejor'
+            tipo: 'mayor_mejor',
+            metodo: 'tir'
         }
     ];
+    
+    // Filtrar criterios según métodos seleccionados
+    const criterios = criteriosTodos.filter(c => metodosSeleccionados[c.metodo]);
+    
+    // Calcular pesos dinámicamente según cantidad de criterios
+    const numCriterios = criterios.length;
+    const pesosBase = {
+        1: [1.0],
+        2: [0.5, 0.5],
+        3: [0.35, 0.35, 0.30]
+    };
+    
+    const pesos = pesosBase[numCriterios] || [1/numCriterios];
+    criterios.forEach((criterio, index) => {
+        criterio.peso = pesos[index] || 1/numCriterios;
+    });
 
     // Calcular puntajes normalizados para cada criterio
     criterios.forEach(criterio => {
@@ -71,23 +79,9 @@ function calcularMatrizComparativa(datosA, datosB, resultadosA, resultadosB) {
 }
 
 /**
- * Calcula el payback (tiempo de recuperación) normalizado
- * @param {Object} datos - Datos de la alternativa
- * @param {Number} vpn - VPN de la alternativa
- * @returns {Number} Años de recuperación
+ * FUNCIÓN REMOVIDA: calcularPayback
+ * La recuperación payback ha sido removida del análisis como se solicitó
  */
-function calcularPayback(datos, vpn) {
-    // Si VPN es negativo, no hay recuperación (retorna vidas útiles)
-    if (vpn < 0) {
-        return datos.vidaUtil;
-    }
-    
-    // Aproximación: años de recuperación basado en relación VPN/Inversión
-    const ratio = vpn / datos.inversionInicial;
-    const payback = datos.vidaUtil * (1 - Math.min(ratio * 0.5, 0.9));
-    
-    return Math.max(0.1, payback);
-}
 
 /**
  * Calcula puntaje normalizado 0-100 para un criterio
@@ -135,7 +129,7 @@ function calcularScoringPonderado(criterios) {
 }
 
 /**
- * Análisis de riesgo comparativo
+ * Análisis de riesgo comparativo (sin Payback)
  * @param {Object} datosA - Datos de alternativa A
  * @param {Object} datosB - Datos de alternativa B
  * @param {Object} resultadosA - Resultados de alternativa A
@@ -149,13 +143,6 @@ function analizarRiesgos(datosA, datosB, resultadosA, resultadosB) {
             tipoA: calcularVolatilidad(datosA),
             tipoB: calcularVolatilidad(datosB),
             analisis: analizarVolatilidadRiesgo(datosA, datosB)
-        },
-        
-        // Riesgo de recuperación
-        recuperacion: {
-            paybackA: calcularPayback(datosA, resultadosA.vpn),
-            paybackB: calcularPayback(datosB, resultadosB.vpn),
-            analisis: analizarRecuperacionRiesgo(datosA, datosB, resultadosA, resultadosB)
         },
         
         // Riesgo de sensibilidad
@@ -201,20 +188,6 @@ function analizarVolatilidadRiesgo(datosA, datosB) {
     }
     
     return analisis;
-}
-
-/**
- * Análisis de riesgo en recuperación
- */
-function analizarRecuperacionRiesgo(datosA, datosB, resultadosA, resultadosB) {
-    const paybackA = calcularPayback(datosA, resultadosA.vpn);
-    const paybackB = calcularPayback(datosB, resultadosB.vpn);
-    
-    if (paybackA < paybackB) {
-        return `Alternativa A recupera inversión más rápidamente (${paybackA.toFixed(1)} años vs ${paybackB.toFixed(1)} años), menor riesgo temporal.`;
-    } else {
-        return `Alternativa B recupera inversión más rápidamente (${paybackB.toFixed(1)} años vs ${paybackA.toFixed(1)} años), menor riesgo temporal.`;
-    }
 }
 
 /**
@@ -327,6 +300,23 @@ function generarHTMLMatrizComparativa(criterios, scoring) {
     html += `<div class="diferencia-score mt-3">Diferencia: ${scoring.diferencia} puntos</div>`;
     html += '</div>';
     
+    // Sección de Interpretación
+    html += '<div class="interpretacion-matriz mt-4 p-4" style="background: rgba(13, 110, 253, 0.08); border-left: 4px solid #0d6efd; border-radius: 8px;">';
+    html += '<h6 class="text-primary mb-3">📋 Interpretación del Resultado</h6>';
+    html += '<div style="font-size: 0.95rem; line-height: 1.6;">';
+    html += `<p><strong>Puntaje Total:</strong> Cada alternativa recibe un puntaje de 0 a 100 basado en su desempeño ponderado en todos los criterios seleccionados.</p>`;
+    html += `<p><strong>Cálculo:</strong> Se normaliza el desempeño en cada criterio (0-100) y se multiplica por su peso. Los pesos se distribuyen proporcionalmente entre los métodos seleccionados.</p>`;
+    html += `<p><strong>Interpretación:</strong></p>`;
+    html += `<ul style="margin-left: 1.5rem; margin-top: 0.5rem;">`;
+    html += `<li><strong>Puntaje alto (80-100):</strong> Alternativa muy competitiva en los criterios evaluados</li>`;
+    html += `<li><strong>Puntaje medio (50-79):</strong> Alternativa moderadamente competitiva</li>`;
+    html += `<li><strong>Puntaje bajo (0-49):</strong> Alternativa con desempeño inferior en los criterios</li>`;
+    html += `</ul>`;
+    html += `<p class="mt-3"><strong>Ganador:</strong> La alternativa con mayor puntaje es más favorable según los criterios ponderados seleccionados.</p>`;
+    html += `<p><strong>Diferencia:</strong> Una diferencia mayor a 10 puntos indica una clara preferencia por una alternativa. Diferencias menores sugieren que ambas son competitivas.</p>`;
+    html += '</div>';
+    html += '</div>';
+    
     html += '</div>';
     
     return html;
@@ -346,12 +336,7 @@ function generarHTMLAnalisisRiesgos(riesgos) {
     html += `<p class="mb-0 mt-2">${riesgos.volatilidad.analisis}</p>`;
     html += '</div>';
     
-    // Recuperación
-    html += '<div class="riesgo-item p-3 border-left-info mt-3">';
-    html += '<strong class="text-info">Riesgo de Recuperación:</strong>';
-    html += `<p class="mb-0 mt-2">${riesgos.recuperacion.analisis}</p>`;
-    html += '</div>';
-    
+
     // Sensibilidad
     html += '<div class="riesgo-item p-3 border-left-success mt-3">';
     html += '<strong class="text-success">Robustez Ante Cambios:</strong>';
@@ -372,9 +357,9 @@ function generarHTMLAnalisisRiesgos(riesgos) {
 /**
  * Función principal para actualizar análisis avanzado
  */
-function actualizarAnalisisAvanzado(datosA, datosB, resultadosA, resultadosB) {
-    // Calcular matriz
-    const criterios = calcularMatrizComparativa(datosA, datosB, resultadosA, resultadosB);
+function actualizarAnalisisAvanzado(datosA, datosB, resultadosA, resultadosB, metodosSeleccionados = {vpn: true, cae: true, tir: true}) {
+    // Calcular matriz con criterios filtrados según métodos seleccionados
+    const criterios = calcularMatrizComparativa(datosA, datosB, resultadosA, resultadosB, metodosSeleccionados);
     
     // Calcular scoring ponderado
     const scoring = calcularScoringPonderado(criterios);

@@ -14,24 +14,34 @@ function guardarCalculoEnHistorial(datosA, datosB, resultadosA, resultadosB, com
         // Obtener historial actual
         let historial = obtenerHistorial();
         
+        // Función auxiliar para preparar datos de alternativa
+        const prepararDatos = (datos) => {
+            const datoPrepado = {
+                inversionInicial: parseFloat(datos.inversionInicial),
+                tasaDescuento: parseFloat(datos.tasaDescuento),
+                vidaUtil: parseInt(datos.vidaUtil),
+                valorSalvamento: parseFloat(datos.valorSalvamento),
+                tipoFlujo: datos.tipoFlujo || 'fijo'
+            };
+            
+            // Guardar flujos según el tipo
+            if (datos.tipoFlujo === 'variable' && datos.flujosVariable) {
+                datoPrepado.flujosVariable = datos.flujosVariable.map(f => parseFloat(f));
+                datoPrepado.flujoEfectivo = null; // Explícitamente null para variables
+            } else {
+                datoPrepado.flujoEfectivo = parseFloat(datos.flujoEfectivo);
+                datoPrepado.flujosVariable = null; // Explícitamente null para fijos
+            }
+            
+            return datoPrepado;
+        };
+        
         // Crear nuevo elemento
         const nuevoCalculo = {
             id: Date.now(), // Timestamp como ID único
             fecha: new Date().toLocaleString('es-ES'),
-            datosA: {
-                inversionInicial: parseFloat(datosA.inversionInicial),
-                tasaDescuento: parseFloat(datosA.tasaDescuento),
-                vidaUtil: parseInt(datosA.vidaUtil),
-                flujoEfectivo: parseFloat(datosA.flujoEfectivo),
-                valorSalvamento: parseFloat(datosA.valorSalvamento)
-            },
-            datosB: {
-                inversionInicial: parseFloat(datosB.inversionInicial),
-                tasaDescuento: parseFloat(datosB.tasaDescuento),
-                vidaUtil: parseInt(datosB.vidaUtil),
-                flujoEfectivo: parseFloat(datosB.flujoEfectivo),
-                valorSalvamento: parseFloat(datosB.valorSalvamento)
-            },
+            datosA: prepararDatos(datosA),
+            datosB: prepararDatos(datosB),
             resultadosA: {
                 vpn: parseFloat(resultadosA.vpn),
                 cae: parseFloat(resultadosA.cae),
@@ -171,12 +181,20 @@ function actualizarVistaHistorial() {
         // Determinar la mejor alternativa
         const mejorAlternativa = calculo.comparacion.mejorVPN;
         
+        // Indicadores de tipo de flujo
+        const tipoFlujosA = calculo.datosA.tipoFlujo === 'variable' ? '📊 Variables' : '📈 Fijo';
+        const tipoFlujosB = calculo.datosB.tipoFlujo === 'variable' ? '📊 Variables' : '📈 Fijo';
+        const flujoBadge = tipoFlujosA !== tipoFlujosB ? 
+            `A: ${tipoFlujosA} | B: ${tipoFlujosB}` : 
+            tipoFlujosA;
+        
         fila.innerHTML = `
             <div class="row align-items-center">
                 <div class="col-md-6">
                     <small class="text-muted d-block">📅 ${calculo.fecha}</small>
                     <strong>Inversión A:</strong> ${formatearMoneda(calculo.datosA.inversionInicial)}<br>
                     <strong>Inversión B:</strong> ${formatearMoneda(calculo.datosB.inversionInicial)}<br>
+                    <small class="text-muted d-block mt-1">Flujos: ${flujoBadge}</small>
                     <strong>Mejor:</strong> <span class="badge bg-success">Alt. ${mejorAlternativa}</span>
                 </div>
                 <div class="col-md-6 text-end">
@@ -207,18 +225,52 @@ function cargarCalculoDelHistorial(id) {
     }
     
     try {
-        // Cargar datos en el formulario
-        document.getElementById('inversionA').value = calculo.datosA.inversionInicial;
-        document.getElementById('tasaDescuentoA').value = calculo.datosA.tasaDescuento;
-        document.getElementById('vidaUtilA').value = calculo.datosA.vidaUtil;
-        document.getElementById('flujoEfectivoA').value = calculo.datosA.flujoEfectivo;
-        document.getElementById('valorSalvamentoA').value = calculo.datosA.valorSalvamento;
+        // Función auxiliar para cargar datos de alternativa
+        const cargarDatosAlternativa = (datosHistorial, sufijo) => {
+            // Cargar datos básicos
+            document.getElementById(`inversion${sufijo}`).value = datosHistorial.inversionInicial;
+            document.getElementById(`tasaDescuento${sufijo}`).value = datosHistorial.tasaDescuento;
+            document.getElementById(`vidaUtil${sufijo}`).value = datosHistorial.vidaUtil;
+            document.getElementById(`valorSalvamento${sufijo}`).value = datosHistorial.valorSalvamento;
+            
+            // Determinar tipo de flujo y cargarlo
+            if (datosHistorial.tipoFlujo === 'variable' && datosHistorial.flujosVariable) {
+                // Seleccionar flujo variable
+                const radioVariable = document.getElementById(`flujoVariable${sufijo}`);
+                if (radioVariable) {
+                    radioVariable.checked = true;
+                    // Trigger change event para mostrar tabla de flujos
+                    radioVariable.dispatchEvent(new Event('change'));
+                }
+                
+                // Cargar flujos variables
+                setTimeout(() => {
+                    const vidaUtil = datosHistorial.vidaUtil;
+                    for (let año = 1; año <= vidaUtil; año++) {
+                        const inputId = `flujoVariable${sufijo}_Año${año}`;
+                        const input = document.getElementById(inputId);
+                        if (input && datosHistorial.flujosVariable[año - 1] !== undefined) {
+                            input.value = datosHistorial.flujosVariable[año - 1];
+                        }
+                    }
+                }, 100);
+            } else {
+                // Seleccionar flujo fijo
+                const radioFijo = document.getElementById(`flujoFijo${sufijo}`);
+                if (radioFijo) {
+                    radioFijo.checked = true;
+                    // Trigger change event para ocultar tabla de flujos
+                    radioFijo.dispatchEvent(new Event('change'));
+                }
+                
+                // Cargar flujo fijo
+                document.getElementById(`flujoEfectivo${sufijo}`).value = datosHistorial.flujoEfectivo;
+            }
+        };
         
-        document.getElementById('inversionB').value = calculo.datosB.inversionInicial;
-        document.getElementById('tasaDescuentoB').value = calculo.datosB.tasaDescuento;
-        document.getElementById('vidaUtilB').value = calculo.datosB.vidaUtil;
-        document.getElementById('flujoEfectivoB').value = calculo.datosB.flujoEfectivo;
-        document.getElementById('valorSalvamentoB').value = calculo.datosB.valorSalvamento;
+        // Cargar datos de ambas alternativas
+        cargarDatosAlternativa(calculo.datosA, 'A');
+        cargarDatosAlternativa(calculo.datosB, 'B');
         
         // Hacer scroll hacia el formulario
         document.querySelector('.container').scrollIntoView({ behavior: 'smooth' });

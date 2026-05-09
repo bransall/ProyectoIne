@@ -112,12 +112,20 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         yPos += 8;
         
         // Tabla de datos de entrada
+        // Función auxiliar para mostrar flujos correctamente
+        const obtenerMostrarFlujo = (datos) => {
+            if (datos.tipoFlujo === 'variable' && datos.flujosVariable) {
+                return 'Variables (Ver detalles abajo)';
+            }
+            return formatearMoneda(datos.flujoEfectivo);
+        };
+        
         const datosTabla = [
             ['Concepto', 'Alternativa A', 'Alternativa B'],
             ['Inversión Inicial', formatearMoneda(datosA.inversionInicial), formatearMoneda(datosB.inversionInicial)],
             ['Tasa de Descuento', formatearNumero(datosA.tasaDescuento) + '%', formatearNumero(datosB.tasaDescuento) + '%'],
             ['Vida Útil (años)', datosA.vidaUtil.toString(), datosB.vidaUtil.toString()],
-            ['Flujo de Efectivo Anual', formatearMoneda(datosA.flujoEfectivo), formatearMoneda(datosB.flujoEfectivo)],
+            ['Flujo de Efectivo', obtenerMostrarFlujo(datosA), obtenerMostrarFlujo(datosB)],
             ['Valor de Salvamento', formatearMoneda(datosA.valorSalvamento), formatearMoneda(datosB.valorSalvamento)]
         ];
         
@@ -148,6 +156,91 @@ function generarReportePDF(datosA, datosB, resultadosA, resultadosB, comparacion
         });
         
         yPos = doc.lastAutoTable.finalY + 12;
+        
+        // ========== FLUJOS VARIABLES (si existen) ==========
+        // Agregar sección de flujos variables si alguna alternativa los tiene
+        const tieneFlujosVariablesA = datosA.tipoFlujo === 'variable' && datosA.flujosVariable;
+        const tieneFlujosVariablesB = datosB.tipoFlujo === 'variable' && datosB.flujosVariable;
+        
+        if (tieneFlujosVariablesA || tieneFlujosVariablesB) {
+            // Verificar si necesita nueva página
+            if (yPos > pageHeight - 80) {
+                doc.addPage();
+                yPos = 15;
+            }
+            
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text('DETALLE DE FLUJOS VARIABLES', margen, yPos);
+            yPos += 8;
+            
+            // Crear tabla de flujos variables
+            const flujosTabla = [['Año']];
+            
+            // Agregar columnas según alternativas
+            if (tieneFlujosVariablesA) {
+                flujosTabla[0].push('Flujo A');
+            }
+            if (tieneFlujosVariablesB) {
+                flujosTabla[0].push('Flujo B');
+            }
+            
+            // Agregar filas para cada año
+            const maxAños = Math.max(
+                tieneFlujosVariablesA ? datosA.flujosVariable.length : 0,
+                tieneFlujosVariablesB ? datosB.flujosVariable.length : 0
+            );
+            
+            for (let año = 1; año <= maxAños; año++) {
+                const fila = [año.toString()];
+                
+                if (tieneFlujosVariablesA) {
+                    fila.push(formatearMoneda(datosA.flujosVariable[año - 1] || 0));
+                }
+                if (tieneFlujosVariablesB) {
+                    fila.push(formatearMoneda(datosB.flujosVariable[año - 1] || 0));
+                }
+                
+                flujosTabla.push(fila);
+            }
+            
+            // Calcular ancho de columnas dinámicamente
+            const numCols = flujosTabla[0].length;
+            const colWidths = {};
+            colWidths[0] = 20; // Columna de años
+            const espacioRestante = (anchoContenido - 20) / (numCols - 1);
+            for (let i = 1; i < numCols; i++) {
+                colWidths[i] = espacioRestante;
+            }
+            
+            doc.autoTable({
+                head: [flujosTabla[0]],
+                body: flujosTabla.slice(1),
+                startY: yPos,
+                margin: { left: margen, right: margen },
+                columnStyles: Object.keys(colWidths).reduce((acc, key) => {
+                    acc[key] = { cellWidth: colWidths[key], halign: key === 0 ? 'center' : 'right' };
+                    return acc;
+                }, {}),
+                headStyles: {
+                    fillColor: [100, 150, 200],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    lineHeight: 7
+                },
+                bodyStyles: {
+                    textColor: colorTexto,
+                    lineHeight: 6,
+                    fontSize: 9
+                },
+                alternateRowStyles: {
+                    fillColor: [245, 250, 255]
+                },
+                cellPadding: { top: 3, right: 3, bottom: 3, left: 3 }
+            });
+            
+            yPos = doc.lastAutoTable.finalY + 12;
+        }
         
         // Verificar si necesita nueva página
         if (yPos > pageHeight - 40) {

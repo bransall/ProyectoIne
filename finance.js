@@ -621,8 +621,18 @@ function compararAlternativas(resultadosA, resultadosB, vidaUtilA, vidaUtilB, me
  * @returns {string} Valor formateado
  */
 function formatearMoneda(valor) {
+    // Manejar valores nulos o inválidos
+    if (valor === null || valor === undefined || valor === '') {
+        return 'N/A';
+    }
+    
     // Asegurar que es un número
     const num = parseFloat(valor);
+    
+    // Si resulta en NaN, retornar N/A
+    if (isNaN(num)) {
+        return 'N/A';
+    }
     
     // Separar en parte entera y decimal
     const partes = num.toFixed(2).split('.');

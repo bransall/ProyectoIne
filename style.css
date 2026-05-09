@@ -36,6 +36,46 @@
     --navbar-bg: linear-gradient(135deg, rgba(26, 26, 26, 1) 0%, rgba(40, 40, 50, 1) 100%);
 }
 
+/* Sobrecargas de Bootstrap para Modo Oscuro */
+[data-theme="dark"] .alert-light,
+[data-theme="dark"] .table-light,
+[data-theme="dark"] .btn-light {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .alert-light a,
+[data-theme="dark"] .table-light a {
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .text-dark {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .bg-light {
+    background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+[data-theme="dark"] .table thead {
+    background-color: rgba(13, 110, 253, 0.15);
+}
+
+[data-theme="dark"] .table tbody {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .table td,
+[data-theme="dark"] .table th {
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -205,7 +245,7 @@ body::before {
 }
 
 .form-control::placeholder {
-    color: #999;
+    color: var(--text-secondary);
 }
 
 /* ================================
@@ -397,12 +437,22 @@ body::before {
     padding: 0.5rem 1rem;
 }
 
+[data-theme="dark"] .highlight-green {
+    background: linear-gradient(135deg, rgba(25, 135, 84, 0.3) 0%, rgba(25, 135, 84, 0.2) 100%) !important;
+    color: #5dd58a !important;
+}
+
 .highlight-red {
     background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
     color: #721c24 !important;
     font-weight: 700;
     border-radius: 4px;
     padding: 0.5rem 1rem;
+}
+
+[data-theme="dark"] .highlight-red {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.3) 0%, rgba(220, 53, 69, 0.2) 100%) !important;
+    color: #f9676c !important;
 }
 
 /* ================================
@@ -441,7 +491,7 @@ h5 {
 }
 
 .text-muted {
-    color: #999 !important;
+    color: var(--text-secondary) !important;
     font-size: 0.85rem;
 }
 
@@ -484,18 +534,19 @@ footer p {
    ================================ */
 
 #recomendacion {
-    background: linear-gradient(135deg, #e7f3ff 0%, #f0e7ff 50%, #fff5e7 100%);
+    background: var(--card-bg);
     border-left: 5px solid var(--primary-color);
     border-radius: var(--border-radius);
     padding: 1.5rem;
     line-height: 1.8;
     font-size: 0.95rem;
-    color: var(--dark-color);
+    color: var(--text-primary);
     margin: 1rem 0;
     box-shadow: 0 4px 15px rgba(13, 110, 253, 0.15);
     transition: var(--transition-smooth);
     position: relative;
     overflow: hidden;
+    border: 1px solid var(--border-color);
 }
 
 #recomendacion::before {
@@ -581,14 +632,14 @@ footer p {
 
 .score-label {
     font-size: 1rem;
-    color: var(--dark-color);
+    color: var(--text-primary);
     font-weight: 600;
 }
 
 .diferencia-score {
     text-align: center;
     font-size: 0.95rem;
-    color: #666;
+    color: var(--text-secondary);
     font-weight: 600;
 }
 
@@ -745,7 +796,7 @@ footer p {
     border: none;
     font-size: 2rem;
     cursor: pointer;
-    color: #999;
+    color: var(--text-secondary);
     transition: color 0.2s ease;
 }
 
@@ -1255,15 +1306,17 @@ textarea:focus {
 
 .history-item {
     transition: all 0.3s ease;
-    background-color: #f8f9fa;
+    background-color: var(--bg-secondary);
     border-radius: 6px;
     padding: 1rem !important;
     margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
 }
 
 .history-item:hover {
-    background-color: #e9ecef;
+    background-color: rgba(13, 110, 253, 0.1);
     transform: translateX(5px);
+    border-color: var(--primary-color);
 }
 
 #listaHistorial {

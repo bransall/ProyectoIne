@@ -18,19 +18,37 @@ function calcularSensibilidad(datos, parametro, variaciones = [-5, -2, -1, 0, 1,
     variaciones.forEach(variacion => {
         const datosModificados = { ...datos };
         
+        // Para flujos variables, hacer copia profunda del array
+        if (datos.flujosVariable && Array.isArray(datos.flujosVariable)) {
+            datosModificados.flujosVariable = [...datos.flujosVariable];
+        }
+        
         if (parametro === 'tasa') {
             datosModificados.tasaDescuento = datos.tasaDescuento + (datos.tasaDescuento * variacion / 100);
         } else if (parametro === 'flujo') {
-            datosModificados.flujoEfectivo = datos.flujoEfectivo + (datos.flujoEfectivo * variacion / 100);
+            // Manejar flujos variables
+            if (datos.tipoFlujo === 'variable' && datos.flujosVariable) {
+                datosModificados.flujosVariable = datos.flujosVariable.map(flujo => 
+                    flujo + (flujo * variacion / 100)
+                );
+            } else {
+                // Manejar flujo fijo
+                datosModificados.flujoEfectivo = datos.flujoEfectivo + (datos.flujoEfectivo * variacion / 100);
+            }
         } else if (parametro === 'inversion') {
             datosModificados.inversionInicial = datos.inversionInicial + (datos.inversionInicial * variacion / 100);
         }
         
         // Calcular VPN con parámetros modificados
+        // Determinar qué flujos pasar según el tipo
+        const flujosPasados = datosModificados.tipoFlujo === 'variable' 
+            ? datosModificados.flujosVariable 
+            : datosModificados.flujoEfectivo;
+        
         const vpn = calcularVPN(
             datosModificados.inversionInicial,
             datosModificados.tasaDescuento,
-            datosModificados.flujoEfectivo,
+            flujosPasados,
             datosModificados.vidaUtil,
             datosModificados.valorSalvamento
         );

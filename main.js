@@ -332,9 +332,10 @@ function mostrarResultados() {
     // Recomendación (usar innerHTML para permitir etiquetas HTML)
     document.getElementById('recomendacion').innerHTML = datosComparacion.recomendacion;
     
-    // Análisis comparativo avanzado
+    // Análisis comparativo avanzado con métodos seleccionados
     if (typeof actualizarAnalisisAvanzado === 'function') {
-        actualizarAnalisisAvanzado(datosAlternativaA, datosAlternativaB, resultadosAlternativaA, resultadosAlternativaB);
+        const metodos = obtenerMetodosSeleccionados();
+        actualizarAnalisisAvanzado(datosAlternativaA, datosAlternativaB, resultadosAlternativaA, resultadosAlternativaB, metodos);
     }
 }
 
