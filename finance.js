@@ -170,31 +170,30 @@ function calcularVPN(inversionInicial, tasaDescuento, flujos, vidaUtil, valorSal
 /**
  * Calcula el Costo Anual Equivalente (CAE)
  * A = P × [i(1+i)^n] / [(1+i)^n - 1]
- * Donde P es el VPN (en valor absoluto) y n es la vida útil
+ * Donde P es el VPN (mantiene signo) y n es la vida útil
  * 
- * @param {number} vpn - Valor presente neto
+ * @param {number} vpn - Valor presente neto (puede ser positivo o negativo)
  * @param {number} tasaDescuento - Tasa de descuento (en decimal)
  * @param {number} vidaUtil - Vida útil en años
- * @returns {number} CAE calculado
+ * @returns {number} CAE calculado (con el mismo signo que VPN)
  */
 function calcularCAE(vpn, tasaDescuento, vidaUtil) {
     try {
         tasaDescuento = estandarizarTasa(tasaDescuento);
         
-        // Usar el valor absoluto del VPN
-        let vpnAbsoluto = Math.abs(vpn);
-        
         // Casos especiales
         if (tasaDescuento === 0) {
             // Si tasa es 0, CAE = VPN / años
-            return vpnAbsoluto / vidaUtil;
+            return vpn / vidaUtil;
         }
         
         // Fórmula: A = P × [i(1+i)^n] / [(1+i)^n - 1]
+        // P es el VPN (mantiene su signo: positivo o negativo)
         let numerador = tasaDescuento * Math.pow(1 + tasaDescuento, vidaUtil);
         let denominador = Math.pow(1 + tasaDescuento, vidaUtil) - 1;
         
-        let cae = vpnAbsoluto * (numerador / denominador);
+        // Aplicar factor a VPN directamente (preserva signo)
+        let cae = vpn * (numerador / denominador);
         
         return cae;
     } catch (error) {
